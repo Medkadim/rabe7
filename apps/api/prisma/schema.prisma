@@ -1,0 +1,528 @@
+// rabe7 — Phase 1 core schema
+//
+// Every business table carries `tenantId` even though only one tenant exists
+// today. This is what lets us switch on a second distributor later without
+// touching the schema — it becomes a config row, not a migration.
+//
+// Nothing is hard-deleted: business tables use `deletedAt` (soft delete) so
+// order history, audit trails, and financial records are never destroyed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy, identity & access control
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  currency  String   @default("USD")
+  locale    String   @default("en")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  roles      Role[]
+  customers  Customer[]
+  categories Category[]
+  brands     Brand[]
+  products   Product[]
+  orders     Order[]
+  invoices   Invoice[]
+  payments   Payment[]
+  auditLogs  AuditLog[]
+
+  @@map("tenants")
+}
+
+// Atomically-incremented counters used to generate human-readable, gap-free
+// sequential numbers (order numbers, invoice numbers) without a race
+// condition when two orders are created at the same instant.
+model SequenceCounter {
+  tenantId String
+  key      String
+  value    Int    @default(0)
+
+  @@id([tenantId, key])
+  @@map("sequence_counters")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INVITED
+}
+
+model User {
+  id               String     @id @default(cuid())
+  tenantId         String
+  tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email            String
+  passwordHash     String
+  firstName        String
+  lastName         String
+  phone            String?
+  status           UserStatus @default(INVITED)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean    @default(false)
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+  roles               UserRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
+  ordersCreated       Order[]              @relation("OrderCreatedBy")
+  paymentsTaken       Payment[]            @relation("PaymentReceivedBy")
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@map("users")
+}
+
+// System-defined role codes seeded on install; tenants may add custom roles
+// later without a code change (see RolePermission below).
+enum SystemRoleCode {
+  SUPER_ADMIN
+  DISTRIBUTOR_MANAGER
+  SALES_REPRESENTATIVE
+  WAREHOUSE_EMPLOYEE
+  DELIVERY_DRIVER
+  RETAILER
+}
+
+model Role {
+  id          String          @id @default(cuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code        SystemRoleCode?
+  name        String
+  description String?
+  isSystem    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+// Global catalog of permission codes the application understands, e.g.
+// "orders.create", "orders.cancel", "customers.credit_limit.override".
+// Not tenant-scoped: the code defines what a permission *can* do, the
+// RolePermission join is what grants it within a tenant's role.
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  module      String
+  description String
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// Rotating refresh tokens: only the hash is stored, never the raw token.
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedBy  String?
+  createdByIp String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Short-lived, single-use token emailed to a user who requested a password
+// reset. Only the hash is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// Append-only trail of who changed what. Never updated, never deleted.
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  BLOCKED
+}
+
+enum CustomerSegment {
+  RETAIL
+  WHOLESALE
+  HORECA
+  KEY_ACCOUNT
+  OTHER
+}
+
+model Customer {
+  id               String          @id @default(cuid())
+  tenantId         String
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code             String
+  name             String
+  legalName        String?
+  taxId            String?
+  phone            String?
+  email            String?
+  segment          CustomerSegment @default(RETAIL)
+  status           CustomerStatus  @default(PENDING_APPROVAL)
+  creditLimit      Decimal         @default(0) @db.Decimal(14, 2)
+  paymentTermsDays Int             @default(0)
+  assignedRepId    String?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deletedAt        DateTime?
+
+  addresses      CustomerAddress[]
+  customerPrices CustomerPrice[]
+  orders         Order[]
+  invoices       Invoice[]
+  payments       Payment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([tenantId, name])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String
+  line1      String
+  line2      String?
+  city       String
+  region     String?
+  country    String
+  lat        Decimal? @db.Decimal(10, 7)
+  lng        Decimal? @db.Decimal(10, 7)
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id       String     @id @default(cuid())
+  tenantId String
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentId String?
+  parent   Category?  @relation("CategoryToParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryToParent")
+  name     String
+  isActive Boolean    @default(true)
+
+  products Product[]
+
+  @@unique([tenantId, name, parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  isActive Boolean @default(true)
+
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@map("brands")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISCONTINUED
+  OUT_OF_STOCK
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sku            String
+  barcode        String?
+  name           String
+  description    String?
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId        String?
+  brand          Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  unit           String
+  packagingUnit  String?
+  packagingQty   Int           @default(1)
+  basePrice      Decimal       @db.Decimal(14, 2)
+  taxRatePercent Decimal       @default(0) @db.Decimal(5, 2)
+  minStock       Int           @default(0)
+  currentStock   Int           @default(0)
+  isFeatured     Boolean       @default(false)
+  isPromotion    Boolean       @default(false)
+  imageUrl       String?
+  status         ProductStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  prices         ProductPrice[]
+  customerPrices CustomerPrice[]
+  orderItems     OrderItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, status])
+  @@index([tenantId, name])
+  @@map("products")
+}
+
+// Volume/tier pricing available to any customer in the tenant, e.g.
+// "Wholesale price when ordering 10+ units".
+model ProductPrice {
+  id          String    @id @default(cuid())
+  tenantId    String
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  minQuantity Int       @default(1)
+  price       Decimal   @db.Decimal(14, 2)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, productId])
+  @@map("product_prices")
+}
+
+// A price that overrides everything else for one specific customer.
+model CustomerPrice {
+  id         String    @id @default(cuid())
+  tenantId   String
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price      Decimal   @db.Decimal(14, 2)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([tenantId, customerId, productId])
+  @@map("customer_prices")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  PROCESSING
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderNumber     String
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdByUserId String
+  createdByUser   User        @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  status          OrderStatus @default(DRAFT)
+  subtotal        Decimal     @default(0) @db.Decimal(14, 2)
+  discountTotal   Decimal     @default(0) @db.Decimal(14, 2)
+  taxTotal        Decimal     @default(0) @db.Decimal(14, 2)
+  total           Decimal     @default(0) @db.Decimal(14, 2)
+  notes           String?
+  placedAt        DateTime?
+  confirmedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  invoice       Invoice?
+  payments      Payment[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, customerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(14, 2)
+  discountAmount Decimal @default(0) @db.Decimal(14, 2)
+  taxAmount      Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal      Decimal @db.Decimal(14, 2)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id              String       @id @default(cuid())
+  orderId         String
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus      OrderStatus?
+  toStatus        OrderStatus
+  changedByUserId String?
+  note            String?
+  createdAt       DateTime     @default(now())
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Invoicing & payments
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoiceNumber String
+  status        InvoiceStatus @default(UNPAID)
+  totalAmount   Decimal       @db.Decimal(14, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(14, 2)
+  issuedAt      DateTime      @default(now())
+  dueAt         DateTime
+
+  payments Payment[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, status])
+  @@map("invoices")
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CREDIT
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  tenantId         String
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoiceId        String?
+  invoice          Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  orderId          String?
+  order            Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  method           PaymentMethod
+  amount           Decimal       @db.Decimal(14, 2)
+  reference        String?
+  receivedByUserId String
+  receivedByUser   User          @relation("PaymentReceivedBy", fields: [receivedByUserId], references: [id], onDelete: Restrict)
+  receivedAt       DateTime      @default(now())
+  notes            String?
+
+  @@index([tenantId, customerId])
+  @@index([tenantId, invoiceId])
+  @@map("payments")
+}

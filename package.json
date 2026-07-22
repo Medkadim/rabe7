@@ -1,0 +1,26 @@
+{
+  "name": "rabe7",
+  "private": true,
+  "version": "0.1.0",
+  "description": "rabe7 — single-distributor B2B ordering platform (multi-tenant-ready)",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "pnpm --filter @rabe7/api prisma:migrate",
+    "db:generate": "pnpm --filter @rabe7/api prisma:generate",
+    "db:seed": "pnpm --filter @rabe7/api prisma:seed",
+    "db:studio": "pnpm --filter @rabe7/api prisma:studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
