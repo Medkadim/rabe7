@@ -4,6 +4,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { SequenceService } from "../../common/sequence/sequence.service";
 import { ProductsService } from "../products/products.service";
 import { CustomersService } from "../customers/customers.service";
+import { PromotionsService } from "../promotions/promotions.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderDto } from "./dto/update-order.dto";
 import { QueryOrdersDto } from "./dto/query-orders.dto";
@@ -19,6 +20,7 @@ export class OrdersService {
     private readonly sequence: SequenceService,
     private readonly products: ProductsService,
     private readonly customers: CustomersService,
+    private readonly promotions: PromotionsService,
   ) {}
 
   private async buildItems(tenantId: string, customerId: string, items: CreateOrderDto["items"]) {
@@ -26,16 +28,43 @@ export class OrdersService {
     for (const item of items) {
       const product = await this.products.findOne(tenantId, item.productId);
       const unitPrice = await this.products.resolvePrice(tenantId, item.productId, customerId, item.quantity);
+
+      // A manually-applied discount (rep judgment call) and a promotion
+      // discount (system rule) are independent and additive — a rep can
+      // still negotiate on top of a running promotion.
+      const { discountAmount: promoDiscount } = await this.promotions.resolveDiscount(
+        tenantId,
+        customerId,
+        item.productId,
+        item.quantity,
+        unitPrice,
+      );
+
       const { quantity, discountAmount, taxAmount, lineTotal } = computeLine({
         quantity: item.quantity,
         unitPrice,
-        discountAmount: item.discountAmount ?? 0,
+        discountAmount: (item.discountAmount ?? 0) + promoDiscount,
         taxRatePercent: Number(product.taxRatePercent),
       });
       // Only fields that exist on the OrderItem model go to Prisma —
       // taxRatePercent is an input to the calculation, not something we
       // store per line (the product's current rate is the source of truth).
       computed.push({ productId: item.productId, quantity, unitPrice, discountAmount, taxAmount, lineTotal });
+
+      // Buy-X-get-Y / gift promotions add a separate free line rather than
+      // discounting this one — the customer visibly receives units of
+      // another product, not a cheaper price on this one.
+      const bonus = await this.promotions.resolveBonus(tenantId, customerId, item.productId, item.quantity);
+      if (bonus) {
+        computed.push({
+          productId: bonus.productId,
+          quantity: bonus.quantity,
+          unitPrice: 0,
+          discountAmount: 0,
+          taxAmount: 0,
+          lineTotal: 0,
+        });
+      }
     }
     return computed;
   }

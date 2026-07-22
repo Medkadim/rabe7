@@ -25,6 +25,23 @@ export const PERMISSIONS = {
 
   PAYMENTS_READ: "payments.read",
   PAYMENTS_CREATE: "payments.create",
+
+  PROMOTIONS_READ: "promotions.read",
+  PROMOTIONS_CREATE: "promotions.create",
+  PROMOTIONS_UPDATE: "promotions.update",
+  PROMOTIONS_DELETE: "promotions.delete",
+
+  WAREHOUSE_READ: "warehouse.read",
+  WAREHOUSE_RECEIVE: "warehouse.receive",
+  WAREHOUSE_ADJUST: "warehouse.adjust",
+  WAREHOUSE_PICK: "warehouse.pick",
+  RETURNS_READ: "returns.read",
+  RETURNS_CREATE: "returns.create",
+  RETURNS_RECEIVE: "returns.receive",
+
+  DELIVERY_READ: "delivery.read",
+  DELIVERY_ROUTES_MANAGE: "delivery.routes.manage",
+  DELIVERY_UPDATE_STATUS: "delivery.update_status",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -52,4 +69,21 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
 
   { code: PERMISSIONS.PAYMENTS_READ, module: "payments", description: "View payments and balances" },
   { code: PERMISSIONS.PAYMENTS_CREATE, module: "payments", description: "Record a payment" },
+
+  { code: PERMISSIONS.PROMOTIONS_READ, module: "promotions", description: "View promotions" },
+  { code: PERMISSIONS.PROMOTIONS_CREATE, module: "promotions", description: "Create promotions" },
+  { code: PERMISSIONS.PROMOTIONS_UPDATE, module: "promotions", description: "Edit promotions" },
+  { code: PERMISSIONS.PROMOTIONS_DELETE, module: "promotions", description: "Deactivate promotions" },
+
+  { code: PERMISSIONS.WAREHOUSE_READ, module: "warehouse", description: "View stock levels and movement history" },
+  { code: PERMISSIONS.WAREHOUSE_RECEIVE, module: "warehouse", description: "Record incoming stock" },
+  { code: PERMISSIONS.WAREHOUSE_ADJUST, module: "warehouse", description: "Manually correct a stock count" },
+  { code: PERMISSIONS.WAREHOUSE_PICK, module: "warehouse", description: "Pick a confirmed order for packing" },
+  { code: PERMISSIONS.RETURNS_READ, module: "warehouse", description: "View customer returns" },
+  { code: PERMISSIONS.RETURNS_CREATE, module: "warehouse", description: "Log a customer return" },
+  { code: PERMISSIONS.RETURNS_RECEIVE, module: "warehouse", description: "Receive a return and restock or reject it" },
+
+  { code: PERMISSIONS.DELIVERY_READ, module: "delivery", description: "View delivery routes and statuses" },
+  { code: PERMISSIONS.DELIVERY_ROUTES_MANAGE, module: "delivery", description: "Create routes and assign orders/drivers" },
+  { code: PERMISSIONS.DELIVERY_UPDATE_STATUS, module: "delivery", description: "Update a delivery's status (out for delivery, delivered, failed)" },
 ];

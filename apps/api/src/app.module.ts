@@ -12,6 +12,9 @@ import { CustomersModule } from "./modules/customers/customers.module";
 import { ProductsModule } from "./modules/products/products.module";
 import { OrdersModule } from "./modules/orders/orders.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
+import { PromotionsModule } from "./modules/promotions/promotions.module";
+import { WarehouseModule } from "./modules/warehouse/warehouse.module";
+import { DeliveryModule } from "./modules/delivery/delivery.module";
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { PaymentsModule } from "./modules/payments/payments.module";
     ProductsModule,
     OrdersModule,
     PaymentsModule,
+    PromotionsModule,
+    WarehouseModule,
+    DeliveryModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

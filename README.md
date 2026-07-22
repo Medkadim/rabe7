@@ -9,10 +9,10 @@ This README is written for two audiences: **the business owner** who wants to kn
 exists and how to see it running, and **engineers** who need to set up, extend, or deploy
 the codebase. Skip to whichever section you need.
 
-## What exists right now (Phase 1)
+## What exists right now (Phase 1 + Phase 2)
 
 The plan (see the architecture briefing shared earlier in this project) is three phases.
-**Phase 1 — the foundation — is built and working end to end:**
+**Phase 1 (foundation) and Phase 2 (operations) are both built and working end to end:**
 
 | Module | What it does | Status |
 |---|---|---|
@@ -21,9 +21,12 @@ The plan (see the architecture briefing shared earlier in this project) is three
 | Products | Categories, brands, volume price tiers, customer-specific pricing | ✅ Working |
 | Orders | Create, edit, confirm, cancel, duplicate, PDF export, credit-limit check | ✅ Working |
 | Payments | Record cash/transfer/cheque/credit payments, auto-updates invoice balance | ✅ Working |
-| Admin dashboard | Login, live overview, customers screen (list + create) | ✅ Working |
-| Products/Orders/Payments screens | List + create UI | 🔜 Next (API is ready; UI follows the Customers page's pattern) |
-| Warehouse, Delivery, CRM, Promotions, Mobile app | Phase 2 / Phase 3 | Not started yet |
+| Promotions | Percentage, fixed, volume, buy-X-get-Y/gift, date-scheduled, customer/region-targeted — applied automatically when an order is priced | ✅ Working |
+| Warehouse | Receive stock, manual adjustments (audited), pick a confirmed order (decrements stock, catches shortages), low-stock dashboard, movement history | ✅ Working |
+| Returns | Log a customer return, receive it (sellable items restock, damaged ones are written off) | ✅ Working |
+| Delivery | Routes, assign orders as stops, out-for-delivery/delivered/failed status, cash-on-delivery auto-recorded as a payment, closes the order | ✅ Working |
+| Admin dashboard | Login, live overview, and full list+create/action screens for every module above | ✅ Working |
+| CRM, Mobile app | Phase 3 | Not started yet |
 
 Every piece above has been tested against a real PostgreSQL database, not just compiled —
 see [Testing Strategy](./docs/TESTING_STRATEGY.md) for exactly what was verified.

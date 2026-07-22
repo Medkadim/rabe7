@@ -30,16 +30,21 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users      User[]
-  roles      Role[]
-  customers  Customer[]
-  categories Category[]
-  brands     Brand[]
-  products   Product[]
-  orders     Order[]
-  invoices   Invoice[]
-  payments   Payment[]
-  auditLogs  AuditLog[]
+  users          User[]
+  roles          Role[]
+  customers      Customer[]
+  categories     Category[]
+  brands         Brand[]
+  products       Product[]
+  orders         Order[]
+  invoices       Invoice[]
+  payments       Payment[]
+  auditLogs      AuditLog[]
+  promotions     Promotion[]
+  stockMovements StockMovement[]
+  returns        Return[]
+  deliveryRoutes DeliveryRoute[]
+  deliveries     Delivery[]
 
   @@map("tenants")
 }
@@ -79,12 +84,15 @@ model User {
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
 
-  roles               UserRole[]
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-  auditLogs           AuditLog[]
-  ordersCreated       Order[]              @relation("OrderCreatedBy")
-  paymentsTaken       Payment[]            @relation("PaymentReceivedBy")
+  roles                   UserRole[]
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  auditLogs               AuditLog[]
+  ordersCreated           Order[]              @relation("OrderCreatedBy")
+  paymentsTaken           Payment[]            @relation("PaymentReceivedBy")
+  stockMovementsPerformed StockMovement[]      @relation("StockMovementPerformedBy")
+  returnsCreated          Return[]             @relation("ReturnCreatedBy")
+  deliveryRoutesDriven    DeliveryRoute[]      @relation("DeliveryRouteDriver")
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -246,11 +254,13 @@ model Customer {
   updatedAt        DateTime        @updatedAt
   deletedAt        DateTime?
 
-  addresses      CustomerAddress[]
-  customerPrices CustomerPrice[]
-  orders         Order[]
-  invoices       Invoice[]
-  payments       Payment[]
+  addresses          CustomerAddress[]
+  customerPrices     CustomerPrice[]
+  orders             Order[]
+  invoices           Invoice[]
+  payments           Payment[]
+  promotionCustomers PromotionCustomer[]
+  returns            Return[]
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
@@ -343,9 +353,13 @@ model Product {
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
 
-  prices         ProductPrice[]
-  customerPrices CustomerPrice[]
-  orderItems     OrderItem[]
+  prices            ProductPrice[]
+  customerPrices    CustomerPrice[]
+  orderItems        OrderItem[]
+  promotionProducts PromotionProduct[]
+  promotionRewards  Promotion[]        @relation("PromotionReward")
+  stockMovements    StockMovement[]
+  returnItems       ReturnItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId, status])
@@ -427,6 +441,8 @@ model Order {
   statusHistory OrderStatusHistory[]
   invoice       Invoice?
   payments      Payment[]
+  returns       Return[]
+  delivery      Delivery?
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId, status])
@@ -525,4 +541,207 @@ model Payment {
   @@index([tenantId, customerId])
   @@index([tenantId, invoiceId])
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Promotions (Phase 2)
+// ---------------------------------------------------------------------------
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  VOLUME_DISCOUNT
+  BUY_X_GET_Y
+}
+
+// "Gift products" is deliberately not its own type: a gift is Buy X Get Y
+// with getQuantity = 1 and the gift product as the reward. Same mechanic,
+// one code path to test and maintain instead of two.
+model Promotion {
+  id              String        @id @default(cuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  type            PromotionType
+  discountPercent Decimal?      @db.Decimal(5, 2)
+  discountAmount  Decimal?      @db.Decimal(14, 2)
+  minQuantity     Int?
+  buyQuantity     Int?
+  getQuantity     Int?
+  rewardProductId String?
+  rewardProduct   Product?      @relation("PromotionReward", fields: [rewardProductId], references: [id], onDelete: SetNull)
+  region          String?
+  isActive        Boolean       @default(true)
+  startsAt        DateTime
+  endsAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  products  PromotionProduct[]
+  customers PromotionCustomer[]
+
+  @@index([tenantId, isActive, startsAt, endsAt])
+  @@map("promotions")
+}
+
+model PromotionProduct {
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, productId])
+  @@map("promotion_products")
+}
+
+// If a promotion has no rows here, it applies to every customer.
+model PromotionCustomer {
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, customerId])
+  @@map("promotion_customers")
+}
+
+// ---------------------------------------------------------------------------
+// Warehouse (Phase 2)
+// ---------------------------------------------------------------------------
+
+enum StockMovementType {
+  RECEIVING
+  PICKED
+  ADJUSTMENT
+  RETURNED
+}
+
+// Every change to a product's stock, ever — receiving a delivery, picking
+// an order, a manual correction, a customer return. `currentStock` on
+// Product is the running total; this table is how you prove how it got
+// there, which matters the first time a stock count doesn't match reality.
+model StockMovement {
+  id                String            @id @default(cuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  type              StockMovementType
+  quantity          Int
+  referenceType     String?
+  referenceId       String?
+  note              String?
+  performedByUserId String
+  performedByUser   User              @relation("StockMovementPerformedBy", fields: [performedByUserId], references: [id], onDelete: Restrict)
+  createdAt         DateTime          @default(now())
+
+  @@index([tenantId, productId])
+  @@index([tenantId, createdAt])
+  @@map("stock_movements")
+}
+
+enum ReturnStatus {
+  PENDING
+  RECEIVED
+  REJECTED
+}
+
+model Return {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId         String?
+  order           Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reason          String
+  status          ReturnStatus @default(PENDING)
+  createdByUserId String
+  createdByUser   User         @relation("ReturnCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime     @default(now())
+
+  items ReturnItem[]
+
+  @@index([tenantId, status])
+  @@map("returns")
+}
+
+enum ReturnItemCondition {
+  SELLABLE
+  DAMAGED
+}
+
+model ReturnItem {
+  id        String              @id @default(cuid())
+  returnId  String
+  return    Return              @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  condition ReturnItemCondition
+
+  @@index([returnId])
+  @@map("return_items")
+}
+
+// ---------------------------------------------------------------------------
+// Delivery (Phase 2)
+// ---------------------------------------------------------------------------
+
+enum RouteStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model DeliveryRoute {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  driverUserId  String?
+  driver        User?       @relation("DeliveryRouteDriver", fields: [driverUserId], references: [id], onDelete: SetNull)
+  scheduledDate DateTime
+  status        RouteStatus @default(PLANNED)
+  createdAt     DateTime    @default(now())
+
+  deliveries Delivery[]
+
+  @@index([tenantId, status, scheduledDate])
+  @@map("delivery_routes")
+}
+
+enum DeliveryStatus {
+  PENDING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  PARTIALLY_DELIVERED
+  FAILED
+}
+
+// One delivery per order. Route assignment, stop sequence, and status are
+// all separate from Order.status — Order tracks the customer-facing
+// lifecycle, Delivery tracks the physical fulfillment. Marking a Delivery
+// DELIVERED is what flips the Order to DELIVERED (see DeliveryService).
+model Delivery {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId       String         @unique
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  routeId       String?
+  route         DeliveryRoute? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  sequence      Int?
+  status        DeliveryStatus @default(PENDING)
+  recipientName String?
+  proofPhotoUrl String?
+  cashCollected Decimal?       @db.Decimal(14, 2)
+  notes         String?
+  deliveredAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([tenantId, status])
+  @@map("deliveries")
 }

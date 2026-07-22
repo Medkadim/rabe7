@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Package, ClipboardList, Wallet } from "lucide-react";
+import { LayoutDashboard, Users, Package, ClipboardList, Wallet, Tag, Warehouse, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -11,6 +11,9 @@ const NAV_ITEMS = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/payments", label: "Payments", icon: Wallet },
+  { href: "/promotions", label: "Promotions", icon: Tag },
+  { href: "/warehouse", label: "Warehouse", icon: Warehouse },
+  { href: "/delivery", label: "Delivery", icon: Truck },
 ];
 
 export function NavSidebar() {

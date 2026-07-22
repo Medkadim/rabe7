@@ -4,6 +4,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { SequenceService } from "../../common/sequence/sequence.service";
 import { ProductsService } from "../products/products.service";
 import { CustomersService } from "../customers/customers.service";
+import { PromotionsService } from "../promotions/promotions.service";
 
 describe("OrdersService status transitions", () => {
   let service: OrdersService;
@@ -28,6 +29,7 @@ describe("OrdersService status transitions", () => {
       {} as SequenceService,
       {} as ProductsService,
       {} as CustomersService,
+      {} as PromotionsService,
     );
   });
 
