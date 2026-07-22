@@ -23,6 +23,9 @@ pnpm-debug.log*
 # testing
 coverage/
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # prisma
 apps/api/prisma/migrations/.gitkeep
 
