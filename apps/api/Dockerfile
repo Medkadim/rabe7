@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS base
-# Alpine ships without a C/C++ toolchain. A few dependencies (argon2's
-# password hashing, msgpackr-extract used by ioredis/bullmq) install a
-# prebuilt binary when one matches, and otherwise compile from source —
-# without these, that fallback build fails and `pnpm install` exits 1.
-RUN apk add --no-cache python3 make g++
+# node:22-slim (Debian, glibc) instead of node:22-alpine (musl): argon2 and
+# msgpackr-extract are native binaries, and their prebuilt packages only
+# reliably target glibc — Alpine's musl libc caused a real build failure.
+# Slim keeps the image small while avoiding that whole class of problem.
+FROM node:22-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
 

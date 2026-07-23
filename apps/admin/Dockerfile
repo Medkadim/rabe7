@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS base
-# Alpine ships without a C/C++ toolchain — sharp (Next.js image
-# optimization) falls back to compiling from source when no prebuilt
-# binary matches, and that fails without these installed.
-RUN apk add --no-cache python3 make g++
+# node:22-slim (Debian, glibc) instead of node:22-alpine (musl): Next.js's
+# compiler and sharp are native binaries, and their prebuilt packages only
+# reliably target glibc — Alpine's musl libc caused real build failures.
+# Slim keeps the image small while avoiding that whole class of problem.
+FROM node:22-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
 
