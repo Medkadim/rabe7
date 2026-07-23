@@ -5,7 +5,11 @@
 # reliably target glibc — Alpine's musl libc caused a real build failure.
 # Slim keeps the image small while avoiding that whole class of problem.
 FROM node:22-slim AS base
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+# openssl: Prisma's engine needs it to detect which library version the
+# system uses, both to generate the client and to run it later — without
+# it, `prisma generate` and the running API server both fail the same way.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
