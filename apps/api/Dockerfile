@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1
 
 FROM node:22-alpine AS base
+# Alpine ships without a C/C++ toolchain. A few dependencies (argon2's
+# password hashing, msgpackr-extract used by ioredis/bullmq) install a
+# prebuilt binary when one matches, and otherwise compile from source —
+# without these, that fallback build fails and `pnpm install` exits 1.
+RUN apk add --no-cache python3 make g++
 RUN corepack enable
 WORKDIR /repo
 

@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1
 
 FROM node:22-alpine AS base
+# Alpine ships without a C/C++ toolchain — sharp (Next.js image
+# optimization) falls back to compiling from source when no prebuilt
+# binary matches, and that fails without these installed.
+RUN apk add --no-cache python3 make g++
 RUN corepack enable
 WORKDIR /repo
 
