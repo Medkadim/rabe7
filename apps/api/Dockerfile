@@ -40,6 +40,11 @@ COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/prisma ./prisma
 COPY --from=build /repo/node_modules /repo/node_modules
 COPY --from=build /repo/apps/api/node_modules ./node_modules
+# Same reason as the build stage above: `docker compose exec api pnpm ...`
+# (used for migrate/seed) needs the pnpm version pin and a matching
+# lockfile present, or corepack falls back to the latest pnpm — which
+# blocks native dependencies' (argon2, Prisma) install scripts by default.
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml /repo/
 COPY apps/api/package.json ./
 
 EXPOSE 4000
