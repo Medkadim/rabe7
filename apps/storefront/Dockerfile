@@ -31,6 +31,12 @@ RUN pnpm run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
+# Next.js's standalone server defaults to port 3000 regardless of what's
+# published outside — admin never needed this because its own port already
+# is 3000. Storefront's is 3001, so it has to be told explicitly or it
+# listens on the wrong port inside the container and every request outside
+# just hits nothing.
+ENV PORT=3001
 WORKDIR /repo/apps/storefront
 COPY --from=build /repo/apps/storefront/.next/standalone ./
 COPY --from=build /repo/apps/storefront/.next/static ./apps/storefront/.next/static
