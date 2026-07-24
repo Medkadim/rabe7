@@ -40,6 +40,13 @@ COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/prisma ./prisma
 COPY --from=build /repo/node_modules /repo/node_modules
 COPY --from=build /repo/apps/api/node_modules ./node_modules
+# `prisma db seed` runs prisma/seed.ts through ts-node (not the compiled
+# dist/), and seed.ts imports the permission list straight from source
+# (../src/common/constants/permissions) — so ts-node needs the real
+# source tree plus both tsconfig files to compile and type-check it.
+COPY --from=build /repo/apps/api/src ./src
+COPY --from=build /repo/apps/api/tsconfig.json ./tsconfig.json
+COPY --from=build /repo/tsconfig.base.json /repo/tsconfig.base.json
 # Same reason as the build stage above: `docker compose exec api pnpm ...`
 # (used for migrate/seed) needs the pnpm version pin and a matching
 # lockfile present, or corepack falls back to the latest pnpm — which
