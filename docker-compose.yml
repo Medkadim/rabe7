@@ -80,6 +80,9 @@ services:
     env_file: .env
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the admin server calls
+      # the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
     ports:
       - "3000:3000"
     depends_on:

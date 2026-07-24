@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+// Server-side (inside the admin container) — see login/route.ts for why this
+// needs INTERNAL_API_URL rather than the browser-facing NEXT_PUBLIC_API_URL.
+const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const REFRESH_COOKIE = "rabe7_refresh";
 
 export async function POST(request: NextRequest) {

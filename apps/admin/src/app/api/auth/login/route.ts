@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+// This runs on the Next.js server, inside its own Docker container — not in
+// the user's browser. NEXT_PUBLIC_API_URL is baked in for the browser (which
+// reaches the API through the published localhost:4000 port); the server
+// needs INTERNAL_API_URL instead, Docker's service-name address for the api
+// container, since "localhost" from in here means this container, not api's.
+const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const REFRESH_COOKIE = "rabe7_refresh";
 
 // Runs on the server so the refresh token never touches browser JavaScript
