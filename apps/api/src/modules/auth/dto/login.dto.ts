@@ -1,10 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsOptional, IsString, Length, MinLength } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, Length, MinLength } from "class-validator";
 
 export class LoginDto {
-  @ApiProperty({ example: "manager@distributor.com" })
-  @IsEmail()
-  email!: string;
+  // Staff sign in with email, customers with phone — this one field takes
+  // either, and AuthService.login tries both. Not validated as email/phone
+  // specifically since it has to accept both shapes.
+  @ApiProperty({ example: "manager@distributor.com or +212612345678" })
+  @IsString()
+  @IsNotEmpty()
+  identifier!: string;
 
   @ApiProperty({ example: "correct-horse-battery-staple" })
   @IsString()

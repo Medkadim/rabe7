@@ -17,6 +17,7 @@ interface Product {
   id: string;
   sku: string;
   name: string;
+  description: string | null;
   unit: string;
   basePrice: string;
   taxRatePercent: string;
@@ -38,6 +39,7 @@ interface ProductListResponse {
 const createProductSchema = z.object({
   sku: z.string().min(1, "Required"),
   name: z.string().min(1, "Required"),
+  description: z.string().optional(),
   unit: z.string().min(1, "Required"),
   basePrice: z.string().min(1, "Required"),
   taxRatePercent: z.string().optional(),
@@ -57,6 +59,7 @@ export default function ProductsPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -70,23 +73,50 @@ export default function ProductsPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateProductForm>({ resolver: zodResolver(createProductSchema) });
 
-  const createProduct = useMutation({
-    mutationFn: (values: CreateProductForm) =>
-      apiFetch<Product>("/products", accessToken, {
-        method: "POST",
-        body: JSON.stringify({
-          ...values,
-          basePrice: Number(values.basePrice),
-          taxRatePercent: values.taxRatePercent ? Number(values.taxRatePercent) : undefined,
-          currentStock: values.currentStock ? Number(values.currentStock) : undefined,
-          minStock: values.minStock ? Number(values.minStock) : undefined,
-          images,
-        }),
-      }),
+  function startCreate() {
+    setEditingId(null);
+    setImages([]);
+    setUploadError(null);
+    reset({ sku: "", name: "", description: "", unit: "", basePrice: "", taxRatePercent: "", currentStock: "", minStock: "" });
+    setShowForm(true);
+  }
+
+  function startEdit(product: Product) {
+    setEditingId(product.id);
+    setImages(product.images.map((i) => i.url));
+    setUploadError(null);
+    reset({
+      sku: product.sku,
+      name: product.name,
+      description: product.description ?? "",
+      unit: product.unit,
+      basePrice: product.basePrice,
+      taxRatePercent: product.taxRatePercent,
+      currentStock: String(product.currentStock),
+      minStock: String(product.minStock),
+    });
+    setShowForm(true);
+  }
+
+  const saveProduct = useMutation({
+    mutationFn: (values: CreateProductForm) => {
+      const body = JSON.stringify({
+        ...values,
+        basePrice: Number(values.basePrice),
+        taxRatePercent: values.taxRatePercent ? Number(values.taxRatePercent) : undefined,
+        currentStock: values.currentStock ? Number(values.currentStock) : undefined,
+        minStock: values.minStock ? Number(values.minStock) : undefined,
+        images,
+      });
+      return editingId
+        ? apiFetch<Product>(`/products/${editingId}`, accessToken, { method: "PATCH", body })
+        : apiFetch<Product>("/products", accessToken, { method: "POST", body });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       reset();
       setImages([]);
+      setEditingId(null);
       setShowForm(false);
     },
   });
@@ -111,6 +141,7 @@ export default function ProductsPage() {
   }
 
   const canCreate = hasPermission("products.create");
+  const canUpdate = hasPermission("products.update");
   const hasEnoughImages = images.length >= MIN_PRODUCT_IMAGES;
 
   return (
@@ -123,10 +154,11 @@ export default function ProductsPage() {
         {canCreate && (
           <Button
             onClick={() => {
-              setShowForm((v) => !v);
-              setImages([]);
-              setUploadError(null);
-              reset();
+              if (showForm) {
+                setShowForm(false);
+              } else {
+                startCreate();
+              }
             }}
           >
             {showForm ? "Cancel" : "New product"}
@@ -137,11 +169,11 @@ export default function ProductsPage() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>New product</CardTitle>
+            <CardTitle>{editingId ? "Edit product" : "New product"}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={handleSubmit((values) => createProduct.mutate(values))}
+              onSubmit={handleSubmit((values) => saveProduct.mutate(values))}
               className="grid grid-cols-3 gap-4"
             >
               <div className="flex flex-col gap-1.5">
@@ -153,6 +185,16 @@ export default function ProductsPage() {
                 <Label htmlFor="name">Product name</Label>
                 <Input id="name" placeholder="Coca Cola 1.5L" {...register("name")} />
                 {errors.name && <p className="text-xs text-critical">{errors.name.message}</p>}
+              </div>
+              <div className="col-span-3 flex flex-col gap-1.5">
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  placeholder="What customers see on the product page…"
+                  className="flex w-full rounded-md border border-line bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  {...register("description")}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="unit">Unit</Label>
@@ -208,12 +250,12 @@ export default function ProductsPage() {
 
               <div className="col-span-3 flex items-center gap-3">
                 <Button type="submit" disabled={isSubmitting || !hasEnoughImages || isUploading}>
-                  {isSubmitting ? "Creating…" : "Create product"}
+                  {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create product"}
                 </Button>
-                {createProduct.isError && (
+                {saveProduct.isError && (
                   <p className="text-sm text-critical">
-                    {createProduct.error instanceof ApiError
-                      ? createProduct.error.message
+                    {saveProduct.error instanceof ApiError
+                      ? saveProduct.error.message
                       : "Something went wrong."}
                   </p>
                 )}
@@ -235,19 +277,20 @@ export default function ProductsPage() {
                 <th className="px-5 py-3 font-medium text-right">Base price</th>
                 <th className="px-5 py-3 font-medium text-right">Tax</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
+                {canUpdate && <th className="px-5 py-3 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={8} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={8} className="px-5 py-6 text-center text-muted">
                     No products yet.
                   </td>
                 </tr>
@@ -276,6 +319,13 @@ export default function ProductsPage() {
                       {product.currentStock}
                     </span>
                   </td>
+                  {canUpdate && (
+                    <td className="px-5 py-3 text-right">
+                      <Button variant="outline" size="sm" onClick={() => startEdit(product)}>
+                        Edit
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

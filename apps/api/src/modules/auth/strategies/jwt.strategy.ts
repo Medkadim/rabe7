@@ -8,7 +8,7 @@ import { PermissionCode } from "../../../common/constants/permissions";
 interface AccessTokenPayload {
   sub: string;
   tenantId: string;
-  email: string;
+  email: string | null;
   roles: string[];
   permissions: PermissionCode[];
   customerId: string | null;

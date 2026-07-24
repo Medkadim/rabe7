@@ -15,9 +15,9 @@ const registerSchema = z.object({
   businessName: z.string().min(1, "Required"),
   firstName: z.string().min(1, "Required"),
   lastName: z.string().min(1, "Required"),
-  email: z.string().email("Enter a valid email address."),
+  phone: z.string().min(6, "Enter your phone number, including the country code."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  phone: z.string().optional(),
+  email: z.union([z.string().email("Enter a valid email address."), z.literal("")]).optional(),
   addressLine1: z.string().min(1, "Required"),
   addressCity: z.string().min(1, "Required"),
   addressCountry: z.string().min(1, "Required"),
@@ -41,9 +41,9 @@ export default function RegisterPage() {
         businessName: values.businessName,
         firstName: values.firstName,
         lastName: values.lastName,
-        email: values.email,
-        password: values.password,
         phone: values.phone,
+        password: values.password,
+        email: values.email || undefined,
         address: {
           label: "Shop",
           line1: values.addressLine1,
@@ -86,9 +86,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="username" {...register("email")} />
-              {errors.email && <p className="text-xs text-critical">{errors.email.message}</p>}
+              <Label htmlFor="phone">Phone number</Label>
+              <Input id="phone" type="tel" placeholder="+212612345678" autoComplete="username" {...register("phone")} />
+              {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password">Password</Label>
@@ -97,8 +97,9 @@ export default function RegisterPage() {
             </div>
 
             <div className="col-span-2 flex flex-col gap-1.5">
-              <Label htmlFor="phone">Phone (optional)</Label>
-              <Input id="phone" {...register("phone")} />
+              <Label htmlFor="email">Email (optional)</Label>
+              <Input id="email" type="email" {...register("email")} />
+              {errors.email && <p className="text-xs text-critical">{errors.email.message}</p>}
             </div>
 
             <div className="col-span-2 flex flex-col gap-1.5">

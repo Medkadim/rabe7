@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
@@ -30,19 +31,21 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <Card className="flex flex-col overflow-hidden">
-      {product.images[0] ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={product.images[0].url} alt={product.name} className="h-40 w-full object-cover" />
-      ) : (
-        <div className="h-40 w-full bg-accent-soft" />
-      )}
+      <Link href={`/catalog/${product.id}`}>
+        {product.images[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.images[0].url} alt={product.name} className="h-40 w-full object-cover" />
+        ) : (
+          <div className="h-40 w-full bg-accent-soft" />
+        )}
+      </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div>
-          <p className="font-medium text-ink">{product.name}</p>
+        <Link href={`/catalog/${product.id}`}>
+          <p className="font-medium text-ink hover:underline">{product.name}</p>
           <p className="text-xs text-muted">
             {product.sku} · per {product.unit}
           </p>
-        </div>
+        </Link>
         <p className="text-lg font-semibold text-ink">{product.basePrice}</p>
         {outOfStock ? (
           <p className="mt-auto text-xs font-medium text-critical">Out of stock</p>

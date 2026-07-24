@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -14,6 +15,7 @@ import { SequenceService } from "../../common/sequence/sequence.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterCustomerDto } from "./dto/register-customer.dto";
 import { generateOpaqueToken, hashToken } from "./utils/token.util";
+import { normalizePhone } from "./utils/phone.util";
 import { parseDurationToMs } from "../../common/utils/duration.util";
 import { AuthenticatedUser } from "./types/authenticated-user.type";
 import { PermissionCode } from "../../common/constants/permissions";
@@ -55,7 +57,7 @@ export class AuthService {
   private async issueTokenPair(
     userId: string,
     tenantId: string,
-    email: string,
+    email: string | null,
     customerId: string | null,
     ip?: string,
   ): Promise<TokenPair> {
@@ -90,21 +92,27 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string): Promise<TokenPair & { user: AuthenticatedUser }> {
-    // Single distributor today: a user's email is unique within its tenant,
-    // and there's only one tenant, so we can resolve by email alone. When a
-    // second distributor is switched on, this becomes a tenant-scoped
-    // lookup (e.g. resolved from subdomain) instead of a global one.
+    // Single distributor today: a user's email/phone is unique within its
+    // tenant, and there's only one tenant, so we can resolve by identifier
+    // alone. When a second distributor is switched on, this becomes a
+    // tenant-scoped lookup (e.g. resolved from subdomain) instead of a
+    // global one. Staff sign in with email, customers with phone — try
+    // both, since this one field has to accept either.
+    const normalizedPhone = normalizePhone(dto.identifier);
     const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, deletedAt: null },
+      where: {
+        deletedAt: null,
+        OR: [{ email: dto.identifier }, ...(normalizedPhone ? [{ phone: normalizedPhone }] : [])],
+      },
     });
 
     if (!user || user.status !== "ACTIVE") {
-      throw new UnauthorizedException("Incorrect email or password.");
+      throw new UnauthorizedException("Incorrect email/phone or password.");
     }
 
     const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
-      throw new UnauthorizedException("Incorrect email or password.");
+      throw new UnauthorizedException("Incorrect email/phone or password.");
     }
 
     if (user.twoFactorEnabled) {
@@ -141,11 +149,23 @@ export class AuthService {
     // Single tenant today — same assumption login() makes.
     const tenant = await this.prisma.tenant.findFirstOrThrow();
 
+    // IsPhoneNumber already rejected anything unparseable, but it doesn't
+    // normalize the value it validated — do that here so what's stored (and
+    // later matched against at login) is always the one canonical form.
+    const normalizedPhone = normalizePhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException("Enter a valid phone number, including the country code (e.g. +212612345678).");
+    }
+
     const existing = await this.prisma.user.findFirst({
-      where: { tenantId: tenant.id, email: dto.email, deletedAt: null },
+      where: {
+        tenantId: tenant.id,
+        deletedAt: null,
+        OR: [{ phone: normalizedPhone }, ...(dto.email ? [{ email: dto.email }] : [])],
+      },
     });
     if (existing) {
-      throw new ConflictException("An account with this email already exists.");
+      throw new ConflictException("An account with this phone number or email already exists.");
     }
 
     const retailerRole = await this.prisma.role.findFirstOrThrow({
@@ -161,7 +181,7 @@ export class AuthService {
           tenantId: tenant.id,
           code,
           name: dto.businessName,
-          phone: dto.phone,
+          phone: normalizedPhone,
           email: dto.email,
           status: "PENDING_APPROVAL",
           addresses: { create: [{ ...dto.address, isDefault: true }] },
@@ -176,7 +196,7 @@ export class AuthService {
           passwordHash,
           firstName: dto.firstName,
           lastName: dto.lastName,
-          phone: dto.phone,
+          phone: normalizedPhone,
           status: "ACTIVE",
         },
       });
@@ -233,7 +253,8 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({ where: { email, deletedAt: null } });
     // Always behave the same way whether or not the email exists — this
     // stops the endpoint being used to discover which emails are registered.
-    if (!user) return;
+    // (user.email is guaranteed set here — it's exactly what we searched by.)
+    if (!user || !user.email) return;
 
     const rawToken = generateOpaqueToken();
     await this.prisma.passwordResetToken.create({
@@ -301,7 +322,7 @@ export class AuthService {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const secret = authenticator.generateSecret();
     await this.prisma.user.update({ where: { id: userId }, data: { twoFactorSecret: secret } });
-    const otpauthUrl = authenticator.keyuri(user.email, "rabe7", secret);
+    const otpauthUrl = authenticator.keyuri(user.email ?? user.phone ?? user.id, "rabe7", secret);
     return { secret, otpauthUrl };
   }
 

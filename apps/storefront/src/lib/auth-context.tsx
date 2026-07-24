@@ -8,7 +8,7 @@ import { apiFetch } from "./api-client";
 export interface SessionUser {
   userId: string;
   tenantId: string;
-  email: string;
+  email: string | null;
   roles: string[];
   permissions: string[];
   customerId: string | null;
@@ -25,9 +25,9 @@ export interface RegisterInput {
   businessName: string;
   firstName: string;
   lastName: string;
-  email: string;
+  phone: string;
   password: string;
-  phone?: string;
+  email?: string;
   address: {
     label: string;
     line1: string;
@@ -44,7 +44,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string, twoFactorCode?: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   isApproved: boolean;
@@ -106,11 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string, twoFactorCode?: string) => {
+    async (phone: string, password: string) => {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, twoFactorCode }),
+        body: JSON.stringify({ identifier: phone, password }),
       });
       const data = await res.json();
       if (!res.ok) {

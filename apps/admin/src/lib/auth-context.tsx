@@ -7,7 +7,7 @@ import { decodeAccessToken } from "./jwt";
 export interface SessionUser {
   userId: string;
   tenantId: string;
-  email: string;
+  email: string | null;
   roles: string[];
   permissions: string[];
 }
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, twoFactorCode }),
+        body: JSON.stringify({ identifier: email, password, twoFactorCode }),
       });
       const data = await res.json();
       if (!res.ok) {

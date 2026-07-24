@@ -12,9 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email address."),
+  phone: z.string().min(6, "Enter your phone number, including the country code."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  twoFactorCode: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -22,7 +21,6 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const {
     register,
     handleSubmit,
@@ -32,13 +30,9 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginForm) => {
     setServerError(null);
     try {
-      await login(values.email, values.password, values.twoFactorCode);
+      await login(values.phone, values.password);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong.";
-      if (message.toLowerCase().includes("two-factor")) {
-        setNeedsTwoFactor(true);
-      }
-      setServerError(message);
+      setServerError(error instanceof Error ? error.message : "Something went wrong.");
     }
   };
 
@@ -52,9 +46,15 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="username" {...register("email")} />
-              {errors.email && <p className="text-xs text-critical">{errors.email.message}</p>}
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+212612345678"
+                autoComplete="username"
+                {...register("phone")}
+              />
+              {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -63,17 +63,7 @@ export default function LoginPage() {
               {errors.password && <p className="text-xs text-critical">{errors.password.message}</p>}
             </div>
 
-            {needsTwoFactor && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="twoFactorCode">Authenticator code</Label>
-                <Input id="twoFactorCode" inputMode="numeric" maxLength={6} {...register("twoFactorCode")} />
-              </div>
-            )}
-
-            {serverError && !needsTwoFactor && <p className="text-sm text-critical">{serverError}</p>}
-            {needsTwoFactor && (
-              <p className="text-sm text-muted">Enter the 6-digit code from your authenticator app.</p>
-            )}
+            {serverError && <p className="text-sm text-critical">{serverError}</p>}
 
             <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
               {isSubmitting ? "Signing in…" : "Sign in"}

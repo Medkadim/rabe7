@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -264,7 +265,11 @@ export default function OrdersPage() {
               )}
               {data?.data.map((order) => (
                 <tr key={order.id} className="border-b border-line last:border-0">
-                  <td className="px-5 py-3 font-mono text-xs text-muted">{order.orderNumber}</td>
+                  <td className="px-5 py-3 font-mono text-xs">
+                    <Link href={`/orders/${order.id}`} className="text-accent-ink underline">
+                      {order.orderNumber}
+                    </Link>
+                  </td>
                   <td className="px-5 py-3 font-medium text-ink">{order.customer.name}</td>
                   <td className="px-5 py-3">
                     <span

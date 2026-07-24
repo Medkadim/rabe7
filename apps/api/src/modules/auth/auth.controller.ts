@@ -19,7 +19,7 @@ export class AuthController {
   @Public()
   @Post("login")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Sign in with email and password" })
+  @ApiOperation({ summary: "Sign in with email or phone, and password" })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.authService.login(dto, req.ip);
   }
