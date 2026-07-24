@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #f7f7f2;
+  --cream-soft: #efefe6;
+  --card: #ffffff;
+  --card-muted: #f0f1e9;
+  --ink: #1c2620;
+  --ink-soft: #4b564e;
+  --muted: #6d766e;
+  --line: #e4e5dc;
+
+  --green-950: #0e2a1e;
+  --green-900: #133a27;
+  --green-800: #163f2b;
+  --green-700: #1c4d34;
+  --green-600: #235e3f;
+  --green-500: #2c7350;
+  --green-100: #dbe8de;
+  --green-50: #eef3ec;
+
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+}
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-cream-soft: var(--cream-soft);
+  --color-card: var(--card);
+  --color-card-muted: var(--card-muted);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --color-green-950: var(--green-950);
+  --color-green-900: var(--green-900);
+  --color-green-800: var(--green-800);
+  --color-green-700: var(--green-700);
+  --color-green-600: var(--green-600);
+  --color-green-500: var(--green-500);
+  --color-green-100: var(--green-100);
+  --color-green-50: var(--green-50);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.leaf-divider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.leaf-divider::before,
+.leaf-divider::after {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--green-500);
+  opacity: 0.5;
+}
