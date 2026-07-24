@@ -6,8 +6,8 @@ import { OrdersService } from "./orders.service";
 export class OrderPdfService {
   constructor(private readonly ordersService: OrdersService) {}
 
-  async render(tenantId: string, orderId: string): Promise<Buffer> {
-    const order = await this.ordersService.findOne(tenantId, orderId);
+  async render(tenantId: string, orderId: string, callerCustomerId?: string | null): Promise<Buffer> {
+    const order = await this.ordersService.findOne(tenantId, orderId, callerCustomerId);
 
     const doc = new PDFDocument({ margin: 50 });
     const chunks: Buffer[] = [];

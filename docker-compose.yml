@@ -60,6 +60,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
     ports:
       - "${API_PORT:-4000}:4000"
     depends_on:
@@ -85,6 +86,24 @@ services:
       INTERNAL_API_URL: http://api:4000/api/v1
     ports:
       - "3000:3000"
+    depends_on:
+      - api
+
+  storefront:
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the storefront server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+    ports:
+      - "3001:3001"
     depends_on:
       - api
 

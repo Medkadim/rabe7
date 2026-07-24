@@ -11,6 +11,7 @@ interface AccessTokenPayload {
   email: string;
   roles: string[];
   permissions: PermissionCode[];
+  customerId: string | null;
 }
 
 @Injectable()
@@ -30,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       roles: payload.roles,
       permissions: payload.permissions,
+      customerId: payload.customerId ?? null,
     };
   }
 }

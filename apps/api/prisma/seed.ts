@@ -40,7 +40,17 @@ const ROLE_PERMISSIONS: Record<SystemRoleCode, string[]> = {
     PERMISSIONS.DELIVERY_READ,
     PERMISSIONS.DELIVERY_UPDATE_STATUS,
   ],
-  RETAILER: [PERMISSIONS.PRODUCTS_READ, PERMISSIONS.ORDERS_READ, PERMISSIONS.ORDERS_CREATE],
+  // ORDERS_UPDATE covers confirming their own draft (checkout) as well as
+  // editing it beforehand — ownership (not just permission) is what stops a
+  // retailer from touching anyone else's order; see OrdersService.
+  RETAILER: [
+    PERMISSIONS.PRODUCTS_READ,
+    PERMISSIONS.ORDERS_READ,
+    PERMISSIONS.ORDERS_CREATE,
+    PERMISSIONS.ORDERS_UPDATE,
+    PERMISSIONS.ORDERS_CANCEL,
+    PERMISSIONS.PAYMENTS_READ,
+  ],
 };
 
 async function main() {

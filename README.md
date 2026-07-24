@@ -26,6 +26,8 @@ The plan (see the architecture briefing shared earlier in this project) is three
 | Returns | Log a customer return, receive it (sellable items restock, damaged ones are written off) | ✅ Working |
 | Delivery | Routes, assign orders as stops, out-for-delivery/delivered/failed status, cash-on-delivery auto-recorded as a payment, closes the order | ✅ Working |
 | Admin dashboard | Login, live overview, and full list+create/action screens for every module above | ✅ Working |
+| Product photos | Products carry a real image gallery (minimum 3 photos), stored in MinIO, uploaded from the admin product form | ✅ Working |
+| Customer storefront | A separate customer-facing app: self-registration (pending your approval), browse the catalog, cart, checkout, order history | ✅ Working |
 | CRM, Mobile app | Phase 3 | Not started yet |
 
 Every piece above has been tested against a real PostgreSQL database, not just compiled —
@@ -42,12 +44,16 @@ docker compose exec api pnpm prisma migrate deploy
 docker compose exec api pnpm prisma db seed
 ```
 
-Then open `http://localhost:3000` in a browser and sign in with:
+Then open `http://localhost:3000` (staff admin dashboard) and sign in with:
 
 - **Email:** `admin@rabe7.local`
 - **Password:** `ChangeMe123!`
 
 Change that password immediately after first login — it's a seeded default, not a secret.
+
+Customers use a separate app at `http://localhost:3001` — they create their own account
+there (**Create an account**), which starts "Pending Approval." Approve it from the admin
+dashboard's Customers page before they can place an order.
 
 ## Why multi-tenant-ready (even though there's one distributor today)
 
@@ -102,6 +108,7 @@ pnpm dev
 - API: `http://localhost:4000/api/v1`
 - API docs (Swagger): `http://localhost:4000/api/docs`
 - Admin dashboard: `http://localhost:3000`
+- Customer storefront: `http://localhost:3001`
 
 ### Useful scripts (run from the repo root)
 

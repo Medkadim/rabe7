@@ -38,3 +38,28 @@ export async function apiFetch<T>(
 
   return response.json() as Promise<T>;
 }
+
+// Separate from apiFetch on purpose: a multipart upload must NOT send
+// Content-Type itself — the browser sets it (with the boundary) once it
+// sees the body is a FormData, and forcing "application/json" like
+// apiFetch does would break the upload.
+export async function uploadImage(
+  file: File,
+  accessToken: string | null,
+): Promise<{ url: string; key: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}/uploads/images`, {
+    method: "POST",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ message: response.statusText }));
+    throw new ApiError(response.status, Array.isArray(body.message) ? body.message.join(", ") : body.message);
+  }
+
+  return response.json() as Promise<{ url: string; key: string }>;
+}

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -9,11 +10,14 @@ import * as argon2 from "argon2";
 import { authenticator } from "otplib";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { SequenceService } from "../../common/sequence/sequence.service";
 import { LoginDto } from "./dto/login.dto";
+import { RegisterCustomerDto } from "./dto/register-customer.dto";
 import { generateOpaqueToken, hashToken } from "./utils/token.util";
 import { parseDurationToMs } from "../../common/utils/duration.util";
 import { AuthenticatedUser } from "./types/authenticated-user.type";
 import { PermissionCode } from "../../common/constants/permissions";
+import { SystemRoleCode } from "@prisma/client";
 
 export interface TokenPair {
   accessToken: string;
@@ -28,6 +32,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
+    private readonly sequence: SequenceService,
   ) {}
 
   private async loadPermissions(userId: string): Promise<{ roles: string[]; permissions: PermissionCode[] }> {
@@ -51,6 +56,7 @@ export class AuthService {
     userId: string,
     tenantId: string,
     email: string,
+    customerId: string | null,
     ip?: string,
   ): Promise<TokenPair> {
     const { roles, permissions } = await this.loadPermissions(userId);
@@ -58,7 +64,7 @@ export class AuthService {
     const accessExpiresIn = this.config.get<string>("JWT_ACCESS_EXPIRES_IN", "15m");
     const accessExpiresInSeconds = Math.floor(parseDurationToMs(accessExpiresIn) / 1000);
     const accessToken = await this.jwt.signAsync(
-      { sub: userId, tenantId, email, roles, permissions },
+      { sub: userId, tenantId, email, roles, permissions, customerId },
       {
         secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
         expiresIn: accessExpiresInSeconds,
@@ -116,12 +122,75 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const tokens = await this.issueTokenPair(user.id, user.tenantId, user.email, ip);
+    const tokens = await this.issueTokenPair(user.id, user.tenantId, user.email, user.customerId, ip);
     const { roles, permissions } = await this.loadPermissions(user.id);
 
     return {
       ...tokens,
-      user: { userId: user.id, tenantId: user.tenantId, email: user.email, roles, permissions },
+      user: { userId: user.id, tenantId: user.tenantId, email: user.email, roles, permissions, customerId: user.customerId },
+    };
+  }
+
+  // Self-service sign-up for a customer's own login — distinct from the
+  // admin-side CustomersService.create, which staff use to add a customer
+  // on the customer's behalf. Creates both the business record (Customer,
+  // starts PENDING_APPROVAL — staff must approve before it can order) and
+  // the login itself (User, ACTIVE immediately — they can sign in and
+  // browse right away, ordering is what's gated on approval).
+  async registerCustomer(dto: RegisterCustomerDto, ip?: string): Promise<TokenPair & { user: AuthenticatedUser }> {
+    // Single tenant today — same assumption login() makes.
+    const tenant = await this.prisma.tenant.findFirstOrThrow();
+
+    const existing = await this.prisma.user.findFirst({
+      where: { tenantId: tenant.id, email: dto.email, deletedAt: null },
+    });
+    if (existing) {
+      throw new ConflictException("An account with this email already exists.");
+    }
+
+    const retailerRole = await this.prisma.role.findFirstOrThrow({
+      where: { tenantId: tenant.id, code: SystemRoleCode.RETAILER },
+    });
+
+    const code = this.sequence.formatNumber("CUST", await this.sequence.next(tenant.id, "customer"));
+    const passwordHash = await argon2.hash(dto.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.create({
+        data: {
+          tenantId: tenant.id,
+          code,
+          name: dto.businessName,
+          phone: dto.phone,
+          email: dto.email,
+          status: "PENDING_APPROVAL",
+          addresses: { create: [{ ...dto.address, isDefault: true }] },
+        },
+      });
+
+      const createdUser = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          customerId: customer.id,
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          status: "ACTIVE",
+        },
+      });
+
+      await tx.userRole.create({ data: { userId: createdUser.id, roleId: retailerRole.id } });
+      return createdUser;
+    });
+
+    const tokens = await this.issueTokenPair(user.id, user.tenantId, user.email, user.customerId, ip);
+    const { roles, permissions } = await this.loadPermissions(user.id);
+
+    return {
+      ...tokens,
+      user: { userId: user.id, tenantId: user.tenantId, email: user.email, roles, permissions, customerId: user.customerId },
     };
   }
 
@@ -140,6 +209,7 @@ export class AuthService {
       stored.user.id,
       stored.user.tenantId,
       stored.user.email,
+      stored.user.customerId,
       ip,
     );
 
@@ -201,6 +271,30 @@ export class AuthService {
         data: { revokedAt: new Date() },
       }),
     ]);
+  }
+
+  // Self-service "who am I" — deliberately not gated behind a permission
+  // (there's nothing to authorize, you can always read your own profile).
+  // The storefront uses this to show a customer their own approval status
+  // without needing the staff-only customers.read permission.
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { customer: true },
+    });
+    const { roles, permissions } = await this.loadPermissions(userId);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roles,
+      permissions,
+      customer: user.customer
+        ? { id: user.customer.id, code: user.customer.code, name: user.customer.name, status: user.customer.status }
+        : null,
+    };
   }
 
   async generateTwoFactorSecret(userId: string): Promise<{ secret: string; otpauthUrl: string }> {

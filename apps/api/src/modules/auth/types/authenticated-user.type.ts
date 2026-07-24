@@ -6,4 +6,6 @@ export interface AuthenticatedUser {
   email: string;
   roles: string[];
   permissions: PermissionCode[];
+  // Set only for a customer's own login (RETAILER role) — null for staff.
+  customerId: string | null;
 }

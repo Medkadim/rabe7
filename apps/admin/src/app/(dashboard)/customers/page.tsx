@@ -80,7 +80,17 @@ export default function CustomersPage() {
     },
   });
 
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiFetch<Customer>(`/customers/${id}`, accessToken, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+  });
+
   const canCreate = hasPermission("customers.create");
+  const canApprove = hasPermission("customers.update");
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,19 +164,20 @@ export default function CustomersPage() {
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium text-right">Credit limit</th>
                 <th className="px-5 py-3 font-medium text-right">Terms</th>
+                {canApprove && <th className="px-5 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
                     No customers yet.
                   </td>
                 </tr>
@@ -183,6 +194,50 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">{customer.creditLimit}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{customer.paymentTermsDays}d</td>
+                  {canApprove && (
+                    <td className="px-5 py-3">
+                      {customer.status === "PENDING_APPROVAL" && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={setStatus.isPending}
+                            onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={setStatus.isPending}
+                            onClick={() => setStatus.mutate({ id: customer.id, status: "BLOCKED" })}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                      {customer.status === "ACTIVE" && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate({ id: customer.id, status: "BLOCKED" })}
+                        >
+                          Block
+                        </Button>
+                      )}
+                      {customer.status === "BLOCKED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={setStatus.isPending}
+                          onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
+                        >
+                          Unblock
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

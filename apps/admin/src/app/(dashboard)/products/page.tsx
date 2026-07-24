@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch, uploadImage, ApiError } from "@/lib/api-client";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,10 @@ interface Product {
   currentStock: number;
   minStock: number;
   status: string;
+  images: { url: string }[];
 }
+
+const MIN_PRODUCT_IMAGES = 3;
 
 interface ProductListResponse {
   data: Product[];
@@ -54,6 +57,9 @@ export default function ProductsPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const { data, isLoading } = useApiQuery<ProductListResponse>(["products", "list"], "/products?pageSize=50");
 
@@ -74,16 +80,38 @@ export default function ProductsPage() {
           taxRatePercent: values.taxRatePercent ? Number(values.taxRatePercent) : undefined,
           currentStock: values.currentStock ? Number(values.currentStock) : undefined,
           minStock: values.minStock ? Number(values.minStock) : undefined,
+          images,
         }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       reset();
+      setImages([]);
       setShowForm(false);
     },
   });
 
+  async function handleImagesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = ""; // lets the same file be re-picked if removed later
+    if (files.length === 0) return;
+
+    setUploadError(null);
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const { url } = await uploadImage(file, accessToken);
+        setImages((prev) => [...prev, url]);
+      }
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : "Upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   const canCreate = hasPermission("products.create");
+  const hasEnoughImages = images.length >= MIN_PRODUCT_IMAGES;
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,7 +121,16 @@ export default function ProductsPage() {
           <p className="text-sm text-muted">{data?.meta.total ?? 0} items in the catalog.</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New product"}</Button>
+          <Button
+            onClick={() => {
+              setShowForm((v) => !v);
+              setImages([]);
+              setUploadError(null);
+              reset();
+            }}
+          >
+            {showForm ? "Cancel" : "New product"}
+          </Button>
         )}
       </div>
 
@@ -139,8 +176,38 @@ export default function ProductsPage() {
                 <Label htmlFor="minStock">Minimum stock</Label>
                 <Input id="minStock" type="number" {...register("minStock")} />
               </div>
+
+              <div className="col-span-3 flex flex-col gap-1.5">
+                <Label htmlFor="images">
+                  Product photos ({images.length}/{MIN_PRODUCT_IMAGES} minimum)
+                </Label>
+                <Input id="images" type="file" accept="image/*" multiple onChange={handleImagesSelected} />
+                {isUploading && <p className="text-xs text-muted">Uploading…</p>}
+                {uploadError && <p className="text-xs text-critical">{uploadError}</p>}
+                {images.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {images.map((url, index) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <div key={url} className="group relative h-16 w-16 overflow-hidden rounded-md border border-line">
+                        <img src={url} alt={`Product photo ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setImages((prev) => prev.filter((u) => u !== url))}
+                          className="absolute inset-0 hidden items-center justify-center bg-black/50 text-xs font-medium text-white group-hover:flex"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!hasEnoughImages && (
+                  <p className="text-xs text-muted">Add at least {MIN_PRODUCT_IMAGES} photos before saving.</p>
+                )}
+              </div>
+
               <div className="col-span-3 flex items-center gap-3">
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting || !hasEnoughImages || isUploading}>
                   {isSubmitting ? "Creating…" : "Create product"}
                 </Button>
                 {createProduct.isError && (
@@ -161,6 +228,7 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                <th className="px-5 py-3 font-medium">Photo</th>
                 <th className="px-5 py-3 font-medium">SKU</th>
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Unit</th>
@@ -172,20 +240,32 @@ export default function ProductsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
                     No products yet.
                   </td>
                 </tr>
               )}
               {data?.data.map((product) => (
                 <tr key={product.id} className="border-b border-line last:border-0">
+                  <td className="px-5 py-3">
+                    {product.images[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.images[0].url}
+                        alt={product.name}
+                        className="h-10 w-10 rounded-md border border-line object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md border border-dashed border-line" />
+                    )}
+                  </td>
                   <td className="px-5 py-3 font-mono text-xs text-muted">{product.sku}</td>
                   <td className="px-5 py-3 font-medium text-ink">{product.name}</td>
                   <td className="px-5 py-3 text-muted">{product.unit}</td>

@@ -52,8 +52,15 @@ export class PaymentsService {
     });
   }
 
-  async findAll(tenantId: string, query: QueryPaymentsDto): Promise<PaginatedResult<unknown>> {
-    const where: Prisma.PaymentWhereInput = { tenantId, customerId: query.customerId };
+  // callerCustomerId is set only for a customer's own login (RETAILER role)
+  // — see OrdersService for the same pattern. Without it, granting them
+  // PAYMENTS_READ at all would let them list every customer's payments.
+  async findAll(
+    tenantId: string,
+    query: QueryPaymentsDto,
+    callerCustomerId?: string | null,
+  ): Promise<PaginatedResult<unknown>> {
+    const where: Prisma.PaymentWhereInput = { tenantId, customerId: callerCustomerId ?? query.customerId };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.payment.findMany({
@@ -69,12 +76,12 @@ export class PaymentsService {
     return paginate(data, total, query);
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, callerCustomerId?: string | null) {
     const payment = await this.prisma.payment.findFirst({
       where: { id, tenantId },
       include: { customer: true, invoice: true, order: true },
     });
-    if (!payment) {
+    if (!payment || (callerCustomerId && payment.customerId !== callerCustomerId)) {
       throw new NotFoundException("Payment not found.");
     }
     return payment;

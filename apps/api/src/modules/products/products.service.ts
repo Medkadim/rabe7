@@ -39,7 +39,15 @@ export class ProductsService {
     if (existing) {
       throw new ConflictException(`A product with SKU "${dto.sku}" already exists.`);
     }
-    return this.prisma.product.create({ data: { tenantId, ...dto } });
+    const { images, ...productData } = dto;
+    return this.prisma.product.create({
+      data: {
+        tenantId,
+        ...productData,
+        images: { create: images.map((url, sortOrder) => ({ url, sortOrder })) },
+      },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
+    });
   }
 
   async findAll(tenantId: string, query: QueryProductsDto): Promise<PaginatedResult<unknown>> {
@@ -67,7 +75,7 @@ export class ProductsService {
         skip: query.skip,
         take: query.take,
         orderBy: { createdAt: query.sortDirection },
-        include: { category: true, brand: true, prices: true },
+        include: { category: true, brand: true, prices: true, images: { orderBy: { sortOrder: "asc" } } },
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -78,7 +86,13 @@ export class ProductsService {
   async findOne(tenantId: string, id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, tenantId, deletedAt: null },
-      include: { category: true, brand: true, prices: true, customerPrices: true },
+      include: {
+        category: true,
+        brand: true,
+        prices: true,
+        customerPrices: true,
+        images: { orderBy: { sortOrder: "asc" } },
+      },
     });
     if (!product) {
       throw new NotFoundException("Product not found.");
@@ -88,7 +102,15 @@ export class ProductsService {
 
   async update(tenantId: string, id: string, dto: UpdateProductDto) {
     await this.findOne(tenantId, id);
-    return this.prisma.product.update({ where: { id }, data: { ...dto } });
+    const { images, ...productData } = dto;
+    return this.prisma.product.update({
+      where: { id },
+      data: {
+        ...productData,
+        ...(images ? { images: { deleteMany: {}, create: images.map((url, sortOrder) => ({ url, sortOrder })) } } : {}),
+      },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
+    });
   }
 
   async remove(tenantId: string, id: string): Promise<void> {

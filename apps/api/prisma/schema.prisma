@@ -84,6 +84,12 @@ model User {
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
 
+  // Set only for a customer's own login (RETAILER role, self-registered) —
+  // ties the account to the Customer business record it's allowed to place
+  // orders for. Null for staff accounts (admin, sales rep, warehouse, etc).
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
   roles                   UserRole[]
   refreshTokens           RefreshToken[]
   passwordResetTokens     PasswordResetToken[]
@@ -261,6 +267,7 @@ model Customer {
   payments           Payment[]
   promotionCustomers PromotionCustomer[]
   returns            Return[]
+  users              User[]
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
@@ -347,12 +354,12 @@ model Product {
   currentStock   Int           @default(0)
   isFeatured     Boolean       @default(false)
   isPromotion    Boolean       @default(false)
-  imageUrl       String?
   status         ProductStatus @default(ACTIVE)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
 
+  images            ProductImage[]
   prices            ProductPrice[]
   customerPrices    CustomerPrice[]
   orderItems        OrderItem[]
@@ -365,6 +372,21 @@ model Product {
   @@index([tenantId, status])
   @@index([tenantId, name])
   @@map("products")
+}
+
+// A product must carry at least 3 images (enforced in the service layer,
+// not here — Postgres has no clean "minimum row count" constraint). Ordered
+// by sortOrder; index 0 is the cover image shown in lists.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_images")
 }
 
 // Volume/tier pricing available to any customer in the tenant, e.g.

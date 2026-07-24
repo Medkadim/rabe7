@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { ArrayMinSize, IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class CreateProductDto {
   @ApiProperty({ description: "Stock keeping unit, unique per tenant" })
@@ -84,8 +84,12 @@ export class CreateProductDto {
   @IsBoolean()
   isPromotion?: boolean;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
+  @ApiProperty({
+    description: "Product photo URLs, from POST /uploads/images — at least 3 required",
+    type: [String],
+  })
+  @IsArray()
+  @ArrayMinSize(3, { message: "A product needs at least 3 images." })
+  @IsString({ each: true })
+  images!: string[];
 }

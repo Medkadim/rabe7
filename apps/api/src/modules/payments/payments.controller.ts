@@ -25,13 +25,13 @@ export class PaymentsController {
   @RequirePermissions(PERMISSIONS.PAYMENTS_READ)
   @ApiOperation({ summary: "List payments, optionally filtered by customer" })
   findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: QueryPaymentsDto) {
-    return this.paymentsService.findAll(user.tenantId, query);
+    return this.paymentsService.findAll(user.tenantId, query, user.customerId);
   }
 
   @Get(":id")
   @RequirePermissions(PERMISSIONS.PAYMENTS_READ)
   @ApiOperation({ summary: "Get a payment receipt" })
   findOne(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
-    return this.paymentsService.findOne(user.tenantId, id);
+    return this.paymentsService.findOne(user.tenantId, id, user.customerId);
   }
 }

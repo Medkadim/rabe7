@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { OrderStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SequenceService } from "../../common/sequence/sequence.service";
@@ -69,8 +69,21 @@ export class OrdersService {
     return computed;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateOrderDto) {
-    const customer = await this.customers.findOne(tenantId, dto.customerId);
+  // callerCustomerId is set only for a customer's own login (RETAILER role,
+  // see AuthenticatedUser.customerId) — when present, the customer can only
+  // ever order for themselves (dto.customerId is ignored, never trusted
+  // from the request body) and only once their account is approved. It's
+  // undefined/null for staff, who may place an order for any customer.
+  async create(tenantId: string, userId: string, dto: CreateOrderDto, callerCustomerId?: string | null) {
+    const targetCustomerId = callerCustomerId ?? dto.customerId;
+    const customer = await this.customers.findOne(tenantId, targetCustomerId);
+
+    if (callerCustomerId && customer.status !== "ACTIVE") {
+      throw new ForbiddenException(
+        "Your account is still pending approval. You'll be able to order once it's approved.",
+      );
+    }
+
     const lines = await this.buildItems(tenantId, customer.id, dto.items);
     const totals = computeOrderTotals(lines);
     const orderNumber = this.sequence.formatNumber("ORD", await this.sequence.next(tenantId, "order"));
@@ -91,11 +104,17 @@ export class OrdersService {
     });
   }
 
-  async findAll(tenantId: string, query: QueryOrdersDto): Promise<PaginatedResult<unknown>> {
+  async findAll(
+    tenantId: string,
+    query: QueryOrdersDto,
+    callerCustomerId?: string | null,
+  ): Promise<PaginatedResult<unknown>> {
     const where: Prisma.OrderWhereInput = {
       tenantId,
       status: query.status,
-      customerId: query.customerId,
+      // A customer's own login only ever sees their own orders, regardless
+      // of what customerId (if any) they pass in the query string.
+      customerId: callerCustomerId ?? query.customerId,
       ...(query.search ? { orderNumber: { contains: query.search, mode: "insensitive" } } : {}),
     };
 
@@ -113,7 +132,7 @@ export class OrdersService {
     return paginate(data, total, query);
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, callerCustomerId?: string | null) {
     const order = await this.prisma.order.findFirst({
       where: { id, tenantId },
       include: {
@@ -123,14 +142,16 @@ export class OrdersService {
         invoice: true,
       },
     });
-    if (!order) {
+    // Same "not found" for missing vs. belongs-to-someone-else — a customer
+    // shouldn't be able to tell the two apart by probing order ids.
+    if (!order || (callerCustomerId && order.customerId !== callerCustomerId)) {
       throw new NotFoundException("Order not found.");
     }
     return order;
   }
 
-  async update(tenantId: string, id: string, userId: string, dto: UpdateOrderDto) {
-    const order = await this.findOne(tenantId, id);
+  async update(tenantId: string, id: string, userId: string, dto: UpdateOrderDto, callerCustomerId?: string | null) {
+    const order = await this.findOne(tenantId, id, callerCustomerId);
     if (!EDITABLE_STATUSES.includes(order.status)) {
       throw new BadRequestException(`An order in "${order.status}" status can no longer be edited.`);
     }
@@ -156,8 +177,8 @@ export class OrdersService {
     });
   }
 
-  async confirm(tenantId: string, id: string, userId: string) {
-    const order = await this.findOne(tenantId, id);
+  async confirm(tenantId: string, id: string, userId: string, callerCustomerId?: string | null) {
+    const order = await this.findOne(tenantId, id, callerCustomerId);
     if (!EDITABLE_STATUSES.includes(order.status)) {
       throw new BadRequestException(`An order in "${order.status}" status cannot be confirmed.`);
     }
@@ -202,8 +223,8 @@ export class OrdersService {
     });
   }
 
-  async cancel(tenantId: string, id: string, userId: string, reason: string) {
-    const order = await this.findOne(tenantId, id);
+  async cancel(tenantId: string, id: string, userId: string, reason: string, callerCustomerId?: string | null) {
+    const order = await this.findOne(tenantId, id, callerCustomerId);
     if (order.status === "DELIVERED" || order.status === "CANCELLED") {
       throw new BadRequestException(`An order in "${order.status}" status cannot be cancelled.`);
     }
@@ -222,16 +243,21 @@ export class OrdersService {
     });
   }
 
-  async duplicate(tenantId: string, id: string, userId: string) {
-    const original = await this.findOne(tenantId, id);
-    return this.create(tenantId, userId, {
-      customerId: original.customerId,
-      notes: original.notes ?? undefined,
-      items: original.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        discountAmount: Number(item.discountAmount),
-      })),
-    });
+  async duplicate(tenantId: string, id: string, userId: string, callerCustomerId?: string | null) {
+    const original = await this.findOne(tenantId, id, callerCustomerId);
+    return this.create(
+      tenantId,
+      userId,
+      {
+        customerId: original.customerId,
+        notes: original.notes ?? undefined,
+        items: original.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          discountAmount: Number(item.discountAmount),
+        })),
+      },
+      callerCustomerId,
+    );
   }
 }

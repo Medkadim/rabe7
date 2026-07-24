@@ -1,8 +1,9 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
+import { RegisterCustomerDto } from "./dto/register-customer.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { ForgotPasswordDto, ResetPasswordDto } from "./dto/forgot-password.dto";
 import { EnableTwoFactorDto } from "./dto/enable-two-factor.dto";
@@ -21,6 +22,14 @@ export class AuthController {
   @ApiOperation({ summary: "Sign in with email and password" })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.authService.login(dto, req.ip);
+  }
+
+  @Public()
+  @Post("register-customer")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Customer self-registration — creates a pending-approval account and signs them in" })
+  registerCustomer(@Body() dto: RegisterCustomerDto, @Req() req: Request) {
+    return this.authService.registerCustomer(dto, req.ip);
   }
 
   @Public()
@@ -53,6 +62,13 @@ export class AuthController {
   @ApiOperation({ summary: "Reset password using a reset token" })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  @Get("me")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get the signed-in user's own profile" })
+  getMe(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getProfile(user.userId);
   }
 
   @Post("2fa/generate")

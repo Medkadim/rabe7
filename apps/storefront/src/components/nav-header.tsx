@@ -1,0 +1,51 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { useCart } from "@/lib/cart-context";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const LINKS = [
+  { href: "/catalog", label: "Catalog" },
+  { href: "/orders", label: "My orders" },
+];
+
+export function NavHeader() {
+  const pathname = usePathname();
+  const { user, customer, logout } = useAuth();
+  const { items } = useCart();
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <header className="border-b border-line bg-paper-raised">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <nav className="flex items-center gap-6">
+          <span className="text-sm font-semibold text-ink">rabe7</span>
+          {LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "text-sm text-muted hover:text-ink",
+                pathname.startsWith(link.href) && "font-medium text-ink",
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          <Link href="/cart" className="text-sm text-muted hover:text-ink">
+            Cart{cartCount > 0 ? ` (${cartCount})` : ""}
+          </Link>
+          <span className="hidden text-sm text-ink sm:inline">{customer?.name ?? user?.email}</span>
+          <Button variant="outline" size="sm" onClick={() => void logout()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
