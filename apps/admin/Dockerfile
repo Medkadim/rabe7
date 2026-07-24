@@ -18,6 +18,11 @@ RUN pnpm install --frozen-lockfile --filter @rabe7/admin...
 FROM base AS build
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/admin/node_modules ./apps/admin/node_modules
+# The root package.json pins the exact pnpm version (via "packageManager").
+# Corepack finds that pin by walking up from the working directory — without
+# this file present here too, it silently grabs the latest pnpm instead,
+# which behaves differently enough to break the build.
+COPY package.json ./
 COPY apps/admin apps/admin
 WORKDIR /repo/apps/admin
 ARG NEXT_PUBLIC_API_URL
