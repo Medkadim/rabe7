@@ -36,7 +36,7 @@ function ProductCard({ product }: { product: Product }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.images[0].url} alt={product.name} className="h-40 w-full object-cover" />
         ) : (
-          <div className="h-40 w-full bg-accent-soft" />
+          <div className="h-40 w-full bg-brand-soft" />
         )}
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">

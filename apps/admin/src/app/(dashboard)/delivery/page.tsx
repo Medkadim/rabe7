@@ -51,7 +51,7 @@ type CreateRouteForm = z.infer<typeof createRouteSchema>;
 const DELIVERY_STATUS_STYLE: Record<string, string> = {
   PENDING: "text-muted bg-line/40",
   OUT_FOR_DELIVERY: "text-warning bg-warning/10",
-  DELIVERED: "text-accent-ink bg-accent-soft",
+  DELIVERED: "text-success bg-success-soft",
   PARTIALLY_DELIVERED: "text-warning bg-warning/10",
   FAILED: "text-critical bg-critical/10",
 };

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Package, ClipboardList, Wallet, Tag, Warehouse, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WaslaMark } from "@/components/wasla-mark";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -21,7 +22,10 @@ export function NavSidebar() {
 
   return (
     <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-line bg-paper-raised p-4">
-      <div className="mb-4 px-2 text-lg font-semibold text-ink">Wasla</div>
+      <div className="mb-4 flex items-center gap-2 px-2">
+        <WaslaMark size={22} />
+        <span className="font-display text-lg font-semibold text-ink">Wasla</span>
+      </div>
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
@@ -29,8 +33,8 @@ export function NavSidebar() {
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-accent-soft hover:text-ink",
-              active && "bg-accent-soft text-accent-ink",
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-brand-soft hover:text-ink",
+              active && "bg-brand-soft text-brand-ink",
             )}
           >
             <Icon className="h-4 w-4" />

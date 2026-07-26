@@ -52,7 +52,7 @@ type CreateProductForm = z.infer<typeof createProductSchema>;
 function stockColor(product: Product) {
   if (product.currentStock <= 0) return "text-critical bg-critical/10";
   if (product.currentStock <= product.minStock) return "text-warning bg-warning/10";
-  return "text-accent-ink bg-accent-soft";
+  return "text-success bg-success-soft";
 }
 
 export default function ProductsPage() {

@@ -17,7 +17,7 @@ interface OrderListResponse {
 }
 
 function statusColor(status: string) {
-  if (status === "DELIVERED" || status === "CONFIRMED") return "text-accent-ink bg-accent-soft";
+  if (status === "DELIVERED" || status === "CONFIRMED") return "text-success bg-success-soft";
   if (status === "CANCELLED") return "text-critical bg-critical/10";
   return "text-warning bg-warning/10";
 }

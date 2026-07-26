@@ -57,7 +57,7 @@ const stockActionSchema = z.object({
 type StockActionForm = z.infer<typeof stockActionSchema>;
 
 function movementColor(type: string) {
-  if (type === "RECEIVING" || type === "RETURNED") return "text-accent-ink bg-accent-soft";
+  if (type === "RECEIVING" || type === "RETURNED") return "text-success bg-success-soft";
   if (type === "PICKED") return "text-muted bg-line/40";
   return "text-warning bg-warning/10";
 }
@@ -259,7 +259,7 @@ export default function WarehousePage() {
                   </td>
                   <td className="px-5 py-3 text-muted">{m.note ?? m.referenceType ?? "—"}</td>
                   <td className="px-5 py-3 text-muted">{new Date(m.createdAt).toLocaleString()}</td>
-                  <td className={`px-5 py-3 text-right tabular-nums ${m.quantity < 0 ? "text-critical" : "text-accent-ink"}`}>
+                  <td className={`px-5 py-3 text-right tabular-nums ${m.quantity < 0 ? "text-critical" : "text-success"}`}>
                     {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                   </td>
                 </tr>

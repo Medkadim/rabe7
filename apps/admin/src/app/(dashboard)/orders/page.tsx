@@ -64,9 +64,9 @@ type CreateOrderForm = z.infer<typeof createOrderSchema>;
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: "text-muted bg-line/40",
   PENDING: "text-warning bg-warning/10",
-  CONFIRMED: "text-accent-ink bg-accent-soft",
-  PROCESSING: "text-accent-ink bg-accent-soft",
-  DELIVERED: "text-accent-ink bg-accent-soft",
+  CONFIRMED: "text-success bg-success-soft",
+  PROCESSING: "text-success bg-success-soft",
+  DELIVERED: "text-success bg-success-soft",
   CANCELLED: "text-critical bg-critical/10",
 };
 

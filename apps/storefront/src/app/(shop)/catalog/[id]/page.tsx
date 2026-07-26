@@ -40,7 +40,7 @@ export default function ProductDetailPage() {
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div className="flex flex-col gap-3">
-          <div className="aspect-square overflow-hidden rounded-lg border border-line bg-accent-soft">
+          <div className="aspect-square overflow-hidden rounded-lg border border-line bg-brand-soft">
             {product.images[activeImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

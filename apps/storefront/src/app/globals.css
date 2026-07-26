@@ -1,30 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f5f6f3;
+  /* Wasla brand — see the charte graphique. Indigo is the brand color
+     (headers, nav, the logo mark); amber is the one action color, used
+     only for buttons/links so it never competes with itself. Success/
+     warning/critical are deliberately separate hues from the amber
+     accent — a "Confirmed" badge must never look like a button. */
+  --paper: #eef0f4;
   --paper-raised: #ffffff;
-  --ink: #161b22;
-  --muted: #5b6259;
-  --line: #dcded6;
-  --accent: #2a5c4b;
-  --accent-soft: #dee9e3;
-  --accent-ink: #1d4437;
+  --ink: #14202e;
+  --muted: #55606f;
+  --line: #d8dee6;
+  --brand: #1b3a63;
+  --brand-soft: #e7ecf3;
+  --brand-ink: #10233f;
+  --accent: #c97b2c;
+  --accent-soft: #f6e9d9;
+  --accent-ink: #8a541c;
+  --success: #2f7a5c;
+  --success-soft: #dceae3;
   --critical: #b23a3a;
-  --warning: #9a6a16;
+  --critical-soft: #f3dbdb;
+  --warning: #a6641f;
+  --warning-soft: #f1e1cc;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #12161b;
-    --paper-raised: #181d23;
-    --ink: #e7e9e2;
-    --muted: #98a192;
-    --line: #2a312a;
-    --accent: #63b79b;
-    --accent-soft: #1a2e27;
-    --accent-ink: #8fd3bb;
+    --paper: #0f1620;
+    --paper-raised: #16202c;
+    --ink: #e9edf2;
+    --muted: #93a0af;
+    --line: #28333f;
+    --brand: #6b8fbe;
+    --brand-soft: #1c2634;
+    --brand-ink: #a9c1de;
+    --accent: #e0954b;
+    --accent-soft: #3a2b18;
+    --accent-ink: #f0b273;
+    --success: #5dae8b;
+    --success-soft: #16281f;
     --critical: #e08787;
-    --warning: #d8a44a;
+    --critical-soft: #351c1c;
+    --warning: #d3944c;
+    --warning-soft: #332413;
   }
 }
 
@@ -34,16 +53,30 @@
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
   --color-warning: var(--warning);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), var(--font-plex-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
 }

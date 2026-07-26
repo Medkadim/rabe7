@@ -333,7 +333,7 @@ export default function PromotionsPage() {
                   <td className="px-5 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        promo.isActive ? "text-accent-ink bg-accent-soft" : "text-muted bg-line/40"
+                        promo.isActive ? "text-success bg-success-soft" : "text-muted bg-line/40"
                       }`}
                     >
                       {promo.isActive ? "Active" : "Inactive"}

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
+import { WaslaMark } from "@/components/wasla-mark";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -22,7 +23,10 @@ export function NavHeader() {
     <header className="border-b border-line bg-paper-raised">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <nav className="flex items-center gap-6">
-          <span className="text-sm font-semibold text-ink">Wasla</span>
+          <span className="flex items-center gap-2">
+            <WaslaMark size={20} />
+            <span className="font-display text-sm font-semibold text-ink">Wasla</span>
+          </span>
           {LINKS.map((link) => (
             <Link
               key={link.href}

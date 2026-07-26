@@ -44,7 +44,7 @@ const createCustomerSchema = z.object({
 type CreateCustomerForm = z.infer<typeof createCustomerSchema>;
 
 function statusColor(status: string) {
-  if (status === "ACTIVE") return "text-accent-ink bg-accent-soft";
+  if (status === "ACTIVE") return "text-success bg-success-soft";
   if (status === "BLOCKED") return "text-critical bg-critical/10";
   return "text-warning bg-warning/10";
 }

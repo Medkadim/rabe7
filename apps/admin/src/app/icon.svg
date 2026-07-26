@@ -1,0 +1,13 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .node { fill: #1B3A63; }
+    .link { stroke: #C97B2C; }
+    @media (prefers-color-scheme: dark) {
+      .node { fill: #F2F5F9; }
+      .link { stroke: #E0954B; }
+    }
+  </style>
+  <path class="link" d="M17,31 Q24,21 31,17" stroke-width="4" stroke-linecap="round"/>
+  <circle class="node" cx="15" cy="33" r="8"/>
+  <circle class="node" cx="33" cy="15" r="8"/>
+</svg>
