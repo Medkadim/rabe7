@@ -4,7 +4,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
-  title: "rabe7 — Distributor Admin",
+  title: "Wasla — Distributor Admin",
   description: "B2B distribution platform admin dashboard",
 };
 

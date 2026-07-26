@@ -45,7 +45,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to rabe7</CardTitle>
+          <CardTitle>Sign in to Wasla</CardTitle>
           <p className="mt-1 text-sm text-muted">Your distributor's order management platform.</p>
         </CardHeader>
         <CardContent>

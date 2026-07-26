@@ -1,4 +1,4 @@
-# rabe7 — B2B Distribution Platform
+# Wasla — B2B Distribution Platform
 
 A platform that lets a single FMCG distributor take orders, manage customers and products,
 track payments, and run their business digitally instead of over phone calls, WhatsApp
@@ -46,7 +46,7 @@ docker compose exec api pnpm prisma db seed
 
 Then open `http://localhost:3000` (staff admin dashboard) and sign in with:
 
-- **Email:** `admin@rabe7.local`
+- **Email:** `admin@wasla.local`
 - **Password:** `ChangeMe123!`
 
 Change that password immediately after first login — it's a seeded default, not a secret.

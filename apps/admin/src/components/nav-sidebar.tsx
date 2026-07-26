@@ -21,7 +21,7 @@ export function NavSidebar() {
 
   return (
     <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-line bg-paper-raised p-4">
-      <div className="mb-4 px-2 text-lg font-semibold text-ink">rabe7</div>
+      <div className="mb-4 px-2 text-lg font-semibold text-ink">Wasla</div>
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (

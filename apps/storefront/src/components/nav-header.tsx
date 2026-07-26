@@ -22,7 +22,7 @@ export function NavHeader() {
     <header className="border-b border-line bg-paper-raised">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <nav className="flex items-center gap-6">
-          <span className="text-sm font-semibold text-ink">rabe7</span>
+          <span className="text-sm font-semibold text-ink">Wasla</span>
           {LINKS.map((link) => (
             <Link
               key={link.href}

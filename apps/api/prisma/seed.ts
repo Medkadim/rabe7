@@ -89,7 +89,7 @@ async function main() {
   }
 
   console.log("Seeding first Super Admin user...");
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@rabe7.local";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@wasla.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
   const passwordHash = await argon2.hash(adminPassword);
 
