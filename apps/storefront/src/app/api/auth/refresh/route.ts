@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   // one is now revoked server-side, so the cookie must always be replaced.
   response.cookies.set(REFRESH_COOKIE, data.refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.COOKIE_SECURE === "true",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
