@@ -60,22 +60,26 @@ export default function CartPage() {
         <Card>
           <div className="divide-y divide-line">
             {items.map((item) => (
-              <div key={item.productId} className="flex items-center gap-4 p-4">
+              <div key={item.productId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-ink">{item.name}</p>
                   <p className="text-xs text-muted">{item.unitPrice} each</p>
                 </div>
-                <Input
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) => updateQuantity(item.productId, Number(e.target.value) || 0)}
-                  className="h-9 w-20"
-                />
-                <p className="w-24 text-right font-medium text-ink">{(item.unitPrice * item.quantity).toFixed(2)}</p>
-                <Button variant="ghost" size="sm" onClick={() => removeItem(item.productId)}>
-                  Remove
-                </Button>
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) => updateQuantity(item.productId, Number(e.target.value) || 0)}
+                    className="h-9 w-20"
+                  />
+                  <p className="flex-1 text-right font-medium text-ink sm:w-24 sm:flex-none">
+                    {(item.unitPrice * item.quantity).toFixed(2)}
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => removeItem(item.productId)}>
+                    Remove
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

@@ -33,7 +33,25 @@ export default function OrdersPage() {
       {!isLoading && data?.data.length === 0 && <p className="text-sm text-muted">You haven't placed any orders yet.</p>}
 
       <Card>
-        <div className="overflow-x-auto">
+        {/* Stacked cards on narrow screens — a 4-column table forces sideways
+            scrolling on a phone, which buries the total off-screen. */}
+        <div className="divide-y divide-line sm:hidden">
+          {data?.data.map((order) => (
+            <div key={order.id} className="flex flex-col gap-2 p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs text-muted">{order.orderNumber}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>
+                  {order.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted">{new Date(order.createdAt).toLocaleDateString()}</span>
+                <span className="font-medium tabular-nums text-ink">{order.total}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
