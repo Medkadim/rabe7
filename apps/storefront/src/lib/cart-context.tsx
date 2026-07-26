@@ -23,6 +23,15 @@ const STORAGE_KEY = "rabe7_storefront_cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  // Guards the write effect below from firing with the initial (empty)
+  // state before the read effect's setItems has actually committed. This
+  // has to be state, not a ref: React Strict Mode double-invokes both
+  // effects against the same pre-commit render, so a ref flipped inside
+  // the read effect is already "true" by the time the write effect's
+  // second pass runs — it still sees the stale empty `items` closure and
+  // clobbers a real saved cart. State forces the guard to only flip once
+  // a real re-render has happened, by which point `items` is correct too.
+  const [hydrated, setHydrated] = useState(false);
 
   // Cart survives a page refresh (it's just a draft, not yet an order) —
   // localStorage is enough since it's scoped to this one browser anyway.
@@ -33,11 +42,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // corrupted or inaccessible storage — start with an empty cart
     }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  }, [items, hydrated]);
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">, quantity: number) => {
     setItems((prev) => {

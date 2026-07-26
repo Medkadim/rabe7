@@ -50,17 +50,17 @@ function ProductCard({ product }: { product: Product }) {
         {outOfStock ? (
           <p className="mt-auto text-xs font-medium text-critical">Out of stock</p>
         ) : (
-          <div className="mt-auto flex items-center gap-2">
+          <div className="mt-auto flex flex-col gap-2">
             <Input
               type="number"
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="h-9 w-16"
+              className="h-9 w-full"
             />
             <Button
               size="sm"
-              className="flex-1"
+              className="w-full"
               onClick={() => {
                 const qty = Math.max(1, Number(quantity) || 1);
                 addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, qty);
