@@ -42,8 +42,7 @@ export default function DashboardPage() {
           <CardTitle>Coming next</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted">
-          Revenue charts, top customers and top products land alongside the Warehouse and Delivery modules in
-          Phase 2 — this view already reads live data from the same API those screens will use.
+          Revenue charts, top customers and top products are next on the roadmap for this overview.
         </CardContent>
       </Card>
     </div>
