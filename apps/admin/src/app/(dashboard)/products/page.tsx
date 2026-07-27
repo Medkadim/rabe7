@@ -121,6 +121,11 @@ export default function ProductsPage() {
     },
   });
 
+  const deleteProduct = useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/products/${id}`, accessToken, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+  });
+
   async function handleImagesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = ""; // lets the same file be re-picked if removed later
@@ -142,6 +147,8 @@ export default function ProductsPage() {
 
   const canCreate = hasPermission("products.create");
   const canUpdate = hasPermission("products.update");
+  const canDelete = hasPermission("products.delete");
+  const showActions = canUpdate || canDelete;
   const hasEnoughImages = images.length >= MIN_PRODUCT_IMAGES;
 
   return (
@@ -277,7 +284,7 @@ export default function ProductsPage() {
                 <th className="px-5 py-3 font-medium text-right">Base price</th>
                 <th className="px-5 py-3 font-medium text-right">Tax</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
-                {canUpdate && <th className="px-5 py-3 font-medium text-right">Actions</th>}
+                {showActions && <th className="px-5 py-3 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -319,11 +326,29 @@ export default function ProductsPage() {
                       {product.currentStock}
                     </span>
                   </td>
-                  {canUpdate && (
-                    <td className="px-5 py-3 text-right">
-                      <Button variant="outline" size="sm" onClick={() => startEdit(product)}>
-                        Edit
-                      </Button>
+                  {showActions && (
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {canUpdate && (
+                          <Button variant="outline" size="sm" onClick={() => startEdit(product)}>
+                            Edit
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deleteProduct.isPending}
+                            onClick={() => {
+                              if (window.confirm(`Archive ${product.name}? It will no longer appear in the catalog.`)) {
+                                deleteProduct.mutate(product.id);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -332,6 +357,11 @@ export default function ProductsPage() {
           </table>
         </div>
       </Card>
+      {deleteProduct.isError && (
+        <p className="text-sm text-critical">
+          {deleteProduct.error instanceof ApiError ? deleteProduct.error.message : "Could not archive the product."}
+        </p>
+      )}
     </div>
   );
 }

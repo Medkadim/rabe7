@@ -1,16 +1,24 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileDown } from "lucide-react";
+import { useState } from "react";
+import { FileDown, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface OrderItem {
   id: string;
+  productId: string;
   quantity: number;
   unitPrice: string;
   discountAmount: string;
@@ -52,6 +60,15 @@ interface OrderDetail {
   invoice: Invoice | null;
 }
 
+interface Product {
+  id: string;
+  sku: string;
+  name: string;
+}
+interface ProductListResponse {
+  data: Product[];
+}
+
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: "text-muted bg-line/40",
   PENDING: "text-warning bg-warning/10",
@@ -61,13 +78,62 @@ const STATUS_STYLE: Record<string, string> = {
   CANCELLED: "text-critical bg-critical/10",
 };
 
+const editOrderSchema = z.object({
+  notes: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1, "Choose a product"),
+        quantity: z.string().min(1, "Required"),
+      }),
+    )
+    .min(1, "Add at least one line"),
+});
+
+type EditOrderForm = z.infer<typeof editOrderSchema>;
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: order, isLoading } = useApiQuery<OrderDetail>(["orders", "detail", id], `/orders/${id}`);
+  const { data: products } = useApiQuery<ProductListResponse>(["products", "for-select"], "/products?pageSize=100");
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<EditOrderForm>({ resolver: zodResolver(editOrderSchema) });
+  const { fields, append, remove } = useFieldArray({ control, name: "items" });
+
+  function startEdit() {
+    if (!order) return;
+    reset({
+      notes: order.notes ?? "",
+      items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
+    });
+    setShowEdit(true);
+  }
+
+  const saveEdit = useMutation({
+    mutationFn: (values: EditOrderForm) =>
+      apiFetch<OrderDetail>(`/orders/${id}`, accessToken, {
+        method: "PATCH",
+        body: JSON.stringify({
+          notes: values.notes || undefined,
+          items: values.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) })),
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setShowEdit(false);
+    },
+  });
 
   const confirmOrder = useMutation({
     mutationFn: () => apiFetch(`/orders/${id}/confirm`, accessToken, { method: "POST" }),
@@ -102,6 +168,8 @@ export default function OrderDetailPage() {
   if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
   if (!order) return <p className="text-sm text-muted">Order not found.</p>;
 
+  const isEditable = order.status === "DRAFT" || order.status === "PENDING";
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -115,6 +183,11 @@ export default function OrderDetailPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {canUpdate && isEditable && (
+            <Button variant="outline" onClick={() => (showEdit ? setShowEdit(false) : startEdit())}>
+              {showEdit ? "Cancel edit" : "Edit"}
+            </Button>
+          )}
           {canUpdate && (order.status === "DRAFT" || order.status === "PENDING") && (
             <Button variant="outline" onClick={() => confirmOrder.mutate()} disabled={confirmOrder.isPending}>
               Confirm
@@ -139,6 +212,76 @@ export default function OrderDetailPage() {
               ? cancelOrder.error.message
               : "Something went wrong."}
         </p>
+      )}
+
+      {showEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit order</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit((values) => saveEdit.mutate(values))} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label>Line items</Label>
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-3">
+                    <Select className="flex-1" {...register(`items.${index}.productId`)}>
+                      <option value="">Select a product…</option>
+                      {products?.data.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.sku})
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-24"
+                      placeholder="Qty"
+                      {...register(`items.${index}.quantity`)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                      aria-label="Remove line"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {errors.items?.message && <p className="text-xs text-critical">{errors.items.message}</p>}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => append({ productId: "", quantity: "1" })}
+                >
+                  <Plus className="h-4 w-4" /> Add line
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-1.5 max-w-md">
+                <Label htmlFor="notes">Notes</Label>
+                <Input id="notes" {...register("notes")} />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving…" : "Save changes"}
+                </Button>
+                {saveEdit.isError && (
+                  <p className="text-sm text-critical">
+                    {saveEdit.error instanceof ApiError ? saveEdit.error.message : "Something went wrong."}
+                  </p>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-3 gap-6">

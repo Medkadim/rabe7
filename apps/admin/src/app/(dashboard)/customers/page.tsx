@@ -33,7 +33,7 @@ interface CustomerListResponse {
 // strings anyway) and are converted right before the API call — this keeps
 // the form's input and output types identical, which is what the resolver
 // requires.
-const createCustomerSchema = z.object({
+const customerFormSchema = z.object({
   code: z.string().min(1, "Required"),
   name: z.string().min(1, "Required"),
   phone: z.string().optional(),
@@ -41,7 +41,7 @@ const createCustomerSchema = z.object({
   paymentTermsDays: z.string().optional(),
 });
 
-type CreateCustomerForm = z.infer<typeof createCustomerSchema>;
+type CustomerForm = z.infer<typeof customerFormSchema>;
 
 function statusColor(status: string) {
   if (status === "ACTIVE") return "text-success bg-success-soft";
@@ -53,6 +53,7 @@ export default function CustomersPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data, isLoading } = useApiQuery<CustomerListResponse>(["customers", "list"], "/customers?pageSize=50");
 
@@ -61,21 +62,41 @@ export default function CustomersPage() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateCustomerForm>({ resolver: zodResolver(createCustomerSchema) });
+  } = useForm<CustomerForm>({ resolver: zodResolver(customerFormSchema) });
 
-  const createCustomer = useMutation({
-    mutationFn: (values: CreateCustomerForm) =>
-      apiFetch<Customer>("/customers", accessToken, {
-        method: "POST",
-        body: JSON.stringify({
-          ...values,
-          creditLimit: values.creditLimit ? Number(values.creditLimit) : undefined,
-          paymentTermsDays: values.paymentTermsDays ? Number(values.paymentTermsDays) : undefined,
-        }),
-      }),
+  function startCreate() {
+    setEditingId(null);
+    reset({ code: "", name: "", phone: "", creditLimit: "", paymentTermsDays: "" });
+    setShowForm(true);
+  }
+
+  function startEdit(customer: Customer) {
+    setEditingId(customer.id);
+    reset({
+      code: customer.code,
+      name: customer.name,
+      phone: customer.phone ?? "",
+      creditLimit: customer.creditLimit,
+      paymentTermsDays: String(customer.paymentTermsDays),
+    });
+    setShowForm(true);
+  }
+
+  const saveCustomer = useMutation({
+    mutationFn: (values: CustomerForm) => {
+      const body = JSON.stringify({
+        ...values,
+        creditLimit: values.creditLimit ? Number(values.creditLimit) : undefined,
+        paymentTermsDays: values.paymentTermsDays ? Number(values.paymentTermsDays) : undefined,
+      });
+      return editingId
+        ? apiFetch<Customer>(`/customers/${editingId}`, accessToken, { method: "PATCH", body })
+        : apiFetch<Customer>("/customers", accessToken, { method: "POST", body });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       reset();
+      setEditingId(null);
       setShowForm(false);
     },
   });
@@ -89,8 +110,15 @@ export default function CustomersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
   });
 
+  const deleteCustomer = useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/customers/${id}`, accessToken, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+  });
+
   const canCreate = hasPermission("customers.create");
-  const canApprove = hasPermission("customers.update");
+  const canUpdate = hasPermission("customers.update");
+  const canDelete = hasPermission("customers.delete");
+  const showActions = canUpdate || canDelete;
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,18 +128,28 @@ export default function CustomersPage() {
           <p className="text-sm text-muted">{data?.meta.total ?? 0} retailer accounts.</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New customer"}</Button>
+          <Button
+            onClick={() => {
+              if (showForm) {
+                setShowForm(false);
+              } else {
+                startCreate();
+              }
+            }}
+          >
+            {showForm ? "Cancel" : "New customer"}
+          </Button>
         )}
       </div>
 
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>New customer</CardTitle>
+            <CardTitle>{editingId ? "Edit customer" : "New customer"}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={handleSubmit((values) => createCustomer.mutate(values))}
+              onSubmit={handleSubmit((values) => saveCustomer.mutate(values))}
               className="grid grid-cols-2 gap-4"
             >
               <div className="flex flex-col gap-1.5">
@@ -138,13 +176,11 @@ export default function CustomersPage() {
               </div>
               <div className="col-span-2 flex items-center gap-3">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating…" : "Create customer"}
+                  {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create customer"}
                 </Button>
-                {createCustomer.isError && (
+                {saveCustomer.isError && (
                   <p className="text-sm text-critical">
-                    {createCustomer.error instanceof ApiError
-                      ? createCustomer.error.message
-                      : "Something went wrong."}
+                    {saveCustomer.error instanceof ApiError ? saveCustomer.error.message : "Something went wrong."}
                   </p>
                 )}
               </div>
@@ -164,7 +200,7 @@ export default function CustomersPage() {
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium text-right">Credit limit</th>
                 <th className="px-5 py-3 font-medium text-right">Terms</th>
-                {canApprove && <th className="px-5 py-3 font-medium">Actions</th>}
+                {showActions && <th className="px-5 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -194,48 +230,69 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">{customer.creditLimit}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{customer.paymentTermsDays}d</td>
-                  {canApprove && (
+                  {showActions && (
                     <td className="px-5 py-3">
-                      {customer.status === "PENDING_APPROVAL" && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={setStatus.isPending}
-                            onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
-                          >
-                            Approve
-                          </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {canUpdate && customer.status === "PENDING_APPROVAL" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={setStatus.isPending}
+                              onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={setStatus.isPending}
+                              onClick={() => setStatus.mutate({ id: customer.id, status: "BLOCKED" })}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {canUpdate && customer.status === "ACTIVE" && (
                           <Button
                             variant="destructive"
                             size="sm"
                             disabled={setStatus.isPending}
                             onClick={() => setStatus.mutate({ id: customer.id, status: "BLOCKED" })}
                           >
-                            Reject
+                            Block
                           </Button>
-                        </div>
-                      )}
-                      {customer.status === "ACTIVE" && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={setStatus.isPending}
-                          onClick={() => setStatus.mutate({ id: customer.id, status: "BLOCKED" })}
-                        >
-                          Block
-                        </Button>
-                      )}
-                      {customer.status === "BLOCKED" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={setStatus.isPending}
-                          onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
-                        >
-                          Unblock
-                        </Button>
-                      )}
+                        )}
+                        {canUpdate && customer.status === "BLOCKED" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={setStatus.isPending}
+                            onClick={() => setStatus.mutate({ id: customer.id, status: "ACTIVE" })}
+                          >
+                            Unblock
+                          </Button>
+                        )}
+                        {canUpdate && (
+                          <Button variant="outline" size="sm" onClick={() => startEdit(customer)}>
+                            Edit
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deleteCustomer.isPending}
+                            onClick={() => {
+                              if (window.confirm(`Archive ${customer.name}? This can be undone from the database if needed, but not from this screen.`)) {
+                                deleteCustomer.mutate(customer.id);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -244,6 +301,11 @@ export default function CustomersPage() {
           </table>
         </div>
       </Card>
+      {deleteCustomer.isError && (
+        <p className="text-sm text-critical">
+          {deleteCustomer.error instanceof ApiError ? deleteCustomer.error.message : "Could not archive the customer."}
+        </p>
+      )}
     </div>
   );
 }
