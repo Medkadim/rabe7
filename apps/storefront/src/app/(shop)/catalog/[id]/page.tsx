@@ -16,6 +16,9 @@ interface ProductDetail {
   unit: string;
   basePrice: string;
   currentStock: number;
+  isFeatured: boolean;
+  isPromotion: boolean;
+  category: { name: string } | null;
   images: { url: string }[];
 }
 
@@ -70,9 +73,19 @@ export default function ProductDetailPage() {
 
         <div className="flex flex-col gap-4">
           <div>
+            {(product.isPromotion || product.isFeatured) && (
+              <span
+                className={`mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium text-white ${
+                  product.isPromotion ? "bg-critical" : "bg-brand"
+                }`}
+              >
+                {product.isPromotion ? "Promo" : "Featured"}
+              </span>
+            )}
             <h1 className="text-2xl font-semibold text-ink">{product.name}</h1>
             <p className="text-sm text-muted">
               {product.sku} · per {product.unit}
+              {product.category && ` · ${product.category.name}`}
             </p>
           </div>
 

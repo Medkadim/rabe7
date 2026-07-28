@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface Product {
   id: string;
@@ -15,12 +17,19 @@ interface Product {
   unit: string;
   basePrice: string;
   currentStock: number;
+  isFeatured: boolean;
+  isPromotion: boolean;
   images: { url: string }[];
 }
 
 interface ProductListResponse {
   data: Product[];
   meta: { total: number };
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 function ProductCard({ product }: { product: Product }) {
@@ -31,12 +40,22 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <Card className="flex flex-col overflow-hidden">
-      <Link href={`/catalog/${product.id}`}>
+      <Link href={`/catalog/${product.id}`} className="relative block">
         {product.images[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.images[0].url} alt={product.name} className="h-40 w-full object-cover" />
         ) : (
           <div className="h-40 w-full bg-brand-soft" />
+        )}
+        {(product.isPromotion || product.isFeatured) && (
+          <span
+            className={cn(
+              "absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium",
+              product.isPromotion ? "bg-critical text-white" : "bg-brand text-white",
+            )}
+          >
+            {product.isPromotion ? "Promo" : "Featured"}
+          </span>
         )}
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -71,7 +90,26 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function CatalogPage() {
-  const { data, isLoading } = useApiQuery<ProductListResponse>(["products", "catalog"], "/products?pageSize=50");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+
+  // Debounce so every keystroke doesn't fire a request.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
+
+  const params = new URLSearchParams({ pageSize: "50" });
+  if (search) params.set("search", search);
+  if (categoryId) params.set("categoryId", categoryId);
+
+  const { data, isLoading } = useApiQuery<ProductListResponse>(
+    ["products", "catalog", search, categoryId],
+    `/products?${params.toString()}`,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,8 +118,46 @@ export default function CatalogPage() {
         <p className="text-sm text-muted">{data?.meta.total ?? 0} products available.</p>
       </div>
 
+      <Input
+        type="search"
+        placeholder="Search products…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="h-11"
+      />
+
+      {!!categories?.length && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <button
+            onClick={() => setCategoryId(null)}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+              categoryId === null ? "border-brand bg-brand text-white" : "border-line bg-paper-raised text-muted",
+            )}
+          >
+            All
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setCategoryId(category.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+                categoryId === category.id
+                  ? "border-brand bg-brand text-white"
+                  : "border-line bg-paper-raised text-muted",
+              )}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {!isLoading && data?.data.length === 0 && <p className="text-sm text-muted">No products available yet.</p>}
+      {!isLoading && data?.data.length === 0 && (
+        <p className="text-sm text-muted">No products match your search.</p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {data?.data.map((product) => (
