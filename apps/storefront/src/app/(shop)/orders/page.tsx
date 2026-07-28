@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Card } from "@/components/ui/card";
 
@@ -23,6 +25,7 @@ function statusColor(status: string) {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const { data, isLoading } = useApiQuery<OrderListResponse>(["orders", "mine"], "/orders?pageSize=50");
 
   return (
@@ -37,7 +40,7 @@ export default function OrdersPage() {
             scrolling on a phone, which buries the total off-screen. */}
         <div className="divide-y divide-line sm:hidden">
           {data?.data.map((order) => (
-            <div key={order.id} className="flex flex-col gap-2 p-4">
+            <Link key={order.id} href={`/orders/${order.id}`} className="flex flex-col gap-2 p-4 active:bg-brand-soft">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-muted">{order.orderNumber}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>
@@ -48,7 +51,7 @@ export default function OrdersPage() {
                 <span className="text-xs text-muted">{new Date(order.createdAt).toLocaleDateString()}</span>
                 <span className="font-medium tabular-nums text-ink">{order.total}</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
         <div className="hidden overflow-x-auto sm:block">
@@ -63,8 +66,12 @@ export default function OrdersPage() {
             </thead>
             <tbody>
               {data?.data.map((order) => (
-                <tr key={order.id} className="border-b border-line last:border-0">
-                  <td className="px-5 py-3 font-mono text-xs text-muted">{order.orderNumber}</td>
+                <tr
+                  key={order.id}
+                  onClick={() => router.push(`/orders/${order.id}`)}
+                  className="cursor-pointer border-b border-line last:border-0 hover:bg-brand-soft"
+                >
+                  <td className="px-5 py-3 font-mono text-xs text-accent-ink underline">{order.orderNumber}</td>
                   <td className="px-5 py-3 text-muted">{new Date(order.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>

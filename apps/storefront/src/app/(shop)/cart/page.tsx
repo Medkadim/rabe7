@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { Card } from "@/components/ui/card";
 
 interface Order {
@@ -66,13 +66,7 @@ export default function CartPage() {
                   <p className="text-xs text-muted">{item.unitPrice} each</p>
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.productId, Number(e.target.value) || 0)}
-                    className="h-9 w-20"
-                  />
+                  <QuantityStepper value={item.quantity} onChange={(qty) => updateQuantity(item.productId, qty)} />
                   <p className="flex-1 text-right font-medium text-ink sm:w-24 sm:flex-none">
                     {(item.unitPrice * item.quantity).toFixed(2)}
                   </p>

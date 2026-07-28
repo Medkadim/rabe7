@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/orders", label: "My orders" },
+  { href: "/account", label: "Account" },
 ];
 
 export function NavHeader() {

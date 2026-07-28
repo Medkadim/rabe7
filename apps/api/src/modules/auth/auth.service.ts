@@ -301,7 +301,7 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: { customer: true },
+      include: { customer: { include: { addresses: true } } },
     });
     const { roles, permissions } = await this.loadPermissions(userId);
 
@@ -310,10 +310,28 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      phone: user.phone,
       roles,
       permissions,
       customer: user.customer
-        ? { id: user.customer.id, code: user.customer.code, name: user.customer.name, status: user.customer.status }
+        ? {
+            id: user.customer.id,
+            code: user.customer.code,
+            name: user.customer.name,
+            status: user.customer.status,
+            phone: user.customer.phone,
+            email: user.customer.email,
+            addresses: user.customer.addresses.map((address) => ({
+              id: address.id,
+              label: address.label,
+              line1: address.line1,
+              line2: address.line2,
+              city: address.city,
+              region: address.region,
+              country: address.country,
+              isDefault: address.isDefault,
+            })),
+          }
         : null,
     };
   }

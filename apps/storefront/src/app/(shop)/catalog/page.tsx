@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { Card } from "@/components/ui/card";
 
 interface Product {
@@ -25,7 +25,7 @@ interface ProductListResponse {
 
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const outOfStock = product.currentStock <= 0;
 
@@ -51,19 +51,12 @@ function ProductCard({ product }: { product: Product }) {
           <p className="mt-auto text-xs font-medium text-critical">Out of stock</p>
         ) : (
           <div className="mt-auto flex flex-col gap-2">
-            <Input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="h-9 w-full"
-            />
+            <QuantityStepper value={quantity} onChange={setQuantity} className="w-full" />
             <Button
               size="sm"
               className="w-full"
               onClick={() => {
-                const qty = Math.max(1, Number(quantity) || 1);
-                addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, qty);
+                addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, quantity);
                 setAdded(true);
                 setTimeout(() => setAdded(false), 1200);
               }}

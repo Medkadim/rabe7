@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { QuantityStepper } from "@/components/ui/quantity-stepper";
 
 interface ProductDetail {
   id: string;
@@ -24,7 +24,7 @@ export default function ProductDetailPage() {
   const { addItem } = useCart();
   const { data: product, isLoading } = useApiQuery<ProductDetail>(["products", "detail", id], `/products/${id}`);
   const [activeImage, setActiveImage] = useState(0);
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
   if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
@@ -84,17 +84,10 @@ export default function ProductDetailPage() {
             <p className="text-sm font-medium text-critical">Out of stock</p>
           ) : (
             <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="h-10 w-20"
-              />
+              <QuantityStepper value={quantity} onChange={setQuantity} />
               <Button
                 onClick={() => {
-                  const qty = Math.max(1, Number(quantity) || 1);
-                  addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, qty);
+                  addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, quantity);
                   setAdded(true);
                   setTimeout(() => setAdded(false), 1200);
                 }}

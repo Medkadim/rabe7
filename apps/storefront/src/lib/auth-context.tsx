@@ -14,11 +14,25 @@ export interface SessionUser {
   customerId: string | null;
 }
 
+export interface CustomerAddress {
+  id: string;
+  label: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  region: string | null;
+  country: string;
+  isDefault: boolean;
+}
+
 export interface CustomerProfile {
   id: string;
   code: string;
   name: string;
   status: string;
+  phone: string | null;
+  email: string | null;
+  addresses: CustomerAddress[];
 }
 
 export interface RegisterInput {
@@ -48,6 +62,7 @@ interface AuthContextValue extends AuthState {
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   isApproved: boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -149,9 +164,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [router]);
 
+  const hasPermission = useCallback(
+    (permission: string) => state.user?.permissions.includes(permission) ?? false,
+    [state.user],
+  );
+
   return (
     <AuthContext.Provider
-      value={{ ...state, login, register, logout, isApproved: state.customer?.status === "ACTIVE" }}
+      value={{ ...state, login, register, logout, isApproved: state.customer?.status === "ACTIVE", hasPermission }}
     >
       {children}
     </AuthContext.Provider>
