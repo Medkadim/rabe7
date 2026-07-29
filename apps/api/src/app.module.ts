@@ -16,6 +16,7 @@ import { PromotionsModule } from "./modules/promotions/promotions.module";
 import { WarehouseModule } from "./modules/warehouse/warehouse.module";
 import { DeliveryModule } from "./modules/delivery/delivery.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { FavoritesModule } from "./modules/favorites/favorites.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UploadsModule } from "./modules/uploads/uploads.module";
     WarehouseModule,
     DeliveryModule,
     UploadsModule,
+    FavoritesModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

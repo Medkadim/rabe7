@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
+import { useFavorites } from "@/lib/use-favorites";
 import { Button } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
+import { FavoriteButton } from "@/components/ui/favorite-button";
 
 interface ProductDetail {
   id: string;
@@ -25,6 +27,7 @@ interface ProductDetail {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { addItem } = useCart();
+  const { favoritedIds, toggle } = useFavorites();
   const { data: product, isLoading } = useApiQuery<ProductDetail>(["products", "detail", id], `/products/${id}`);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -73,16 +76,25 @@ export default function ProductDetailPage() {
 
         <div className="flex flex-col gap-4">
           <div>
-            {(product.isPromotion || product.isFeatured) && (
-              <span
-                className={`mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium text-white ${
-                  product.isPromotion ? "bg-critical" : "bg-brand"
-                }`}
-              >
-                {product.isPromotion ? "Promo" : "Featured"}
-              </span>
-            )}
-            <h1 className="text-2xl font-semibold text-ink">{product.name}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                {(product.isPromotion || product.isFeatured) && (
+                  <span
+                    className={`mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium text-white ${
+                      product.isPromotion ? "bg-critical" : "bg-brand"
+                    }`}
+                  >
+                    {product.isPromotion ? "Promo" : "Featured"}
+                  </span>
+                )}
+                <h1 className="text-2xl font-semibold text-ink">{product.name}</h1>
+              </div>
+              <FavoriteButton
+                active={favoritedIds.has(product.id)}
+                onToggle={() => toggle(product.id)}
+                className="border border-line"
+              />
+            </div>
             <p className="text-sm text-muted">
               {product.sku} · per {product.unit}
               {product.category && ` · ${product.category.name}`}

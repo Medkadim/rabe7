@@ -23,6 +23,8 @@ export const PERMISSIONS = {
   ORDERS_UPDATE: "orders.update",
   ORDERS_CANCEL: "orders.cancel",
 
+  FAVORITES_MANAGE: "favorites.manage",
+
   PAYMENTS_READ: "payments.read",
   PAYMENTS_CREATE: "payments.create",
 
@@ -66,6 +68,8 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
   { code: PERMISSIONS.ORDERS_CREATE, module: "orders", description: "Create orders" },
   { code: PERMISSIONS.ORDERS_UPDATE, module: "orders", description: "Edit orders" },
   { code: PERMISSIONS.ORDERS_CANCEL, module: "orders", description: "Cancel orders" },
+
+  { code: PERMISSIONS.FAVORITES_MANAGE, module: "favorites", description: "Save and remove favorite products" },
 
   { code: PERMISSIONS.PAYMENTS_READ, module: "payments", description: "View payments and balances" },
   { code: PERMISSIONS.PAYMENTS_CREATE, module: "payments", description: "Record a payment" },

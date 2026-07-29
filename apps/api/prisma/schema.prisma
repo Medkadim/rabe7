@@ -45,6 +45,7 @@ model Tenant {
   returns        Return[]
   deliveryRoutes DeliveryRoute[]
   deliveries     Delivery[]
+  favorites      Favorite[]
 
   @@map("tenants")
 }
@@ -273,6 +274,7 @@ model Customer {
   promotionCustomers PromotionCustomer[]
   returns            Return[]
   users              User[]
+  favorites          Favorite[]
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
@@ -372,11 +374,30 @@ model Product {
   promotionRewards  Promotion[]        @relation("PromotionReward")
   stockMovements    StockMovement[]
   returnItems       ReturnItem[]
+  favorites         Favorite[]
 
   @@unique([tenantId, sku])
   @@index([tenantId, status])
   @@index([tenantId, name])
   @@map("products")
+}
+
+// A retailer bookmarking a product for quick reorder later — scoped to the
+// Customer (the business), not the individual User login, so it's shared
+// across everyone who signs in for that shop.
+model Favorite {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@map("favorites")
 }
 
 // A product must carry at least 3 images (enforced in the service layer,

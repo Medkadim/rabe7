@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useCart } from "@/lib/cart-context";
+import { useFavorites } from "@/lib/use-favorites";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
+import { FavoriteButton } from "@/components/ui/favorite-button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,7 @@ interface Category {
 
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { favoritedIds, toggle } = useFavorites();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const outOfStock = product.currentStock <= 0;
@@ -57,6 +60,11 @@ function ProductCard({ product }: { product: Product }) {
             {product.isPromotion ? "Promo" : "Featured"}
           </span>
         )}
+        <FavoriteButton
+          active={favoritedIds.has(product.id)}
+          onToggle={() => toggle(product.id)}
+          className="absolute right-2 top-2"
+        />
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link href={`/catalog/${product.id}`}>
