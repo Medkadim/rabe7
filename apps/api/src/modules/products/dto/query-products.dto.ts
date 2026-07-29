@@ -23,4 +23,9 @@ export class QueryProductsDto extends PaginationQueryDto {
   @IsOptional()
   @IsBooleanString()
   featured?: string;
+
+  @ApiPropertyOptional({ description: "Filter to only products on promotion" })
+  @IsOptional()
+  @IsBooleanString()
+  promotion?: string;
 }

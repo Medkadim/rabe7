@@ -58,6 +58,7 @@ export class ProductsService {
       categoryId: query.categoryId,
       brandId: query.brandId,
       isFeatured: query.featured === undefined ? undefined : query.featured === "true",
+      isPromotion: query.promotion === undefined ? undefined : query.promotion === "true",
       ...(query.search
         ? {
             OR: [
@@ -81,6 +82,31 @@ export class ProductsService {
     ]);
 
     return paginate(data, total, query);
+  }
+
+  // "Most ordered" — ranked by total quantity across real orders (anything
+  // past DRAFT), not just order count, so a retailer bulk-buying one SKU
+  // outweighs several one-off single-unit orders of another.
+  async findPopular(tenantId: string, limit: number) {
+    const ranked = await this.prisma.orderItem.groupBy({
+      by: ["productId"],
+      where: { order: { tenantId, status: { notIn: ["DRAFT", "CANCELLED"] } } },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: limit,
+    });
+    if (ranked.length === 0) return [];
+
+    const productIds = ranked.map((r) => r.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, tenantId, deletedAt: null },
+      include: { category: true, brand: true, prices: true, images: { orderBy: { sortOrder: "asc" } } },
+    });
+
+    // groupBy doesn't preserve rank order once we re-fetch by id, so re-sort
+    // the fetched products to match the popularity ranking.
+    const rankById = new Map(productIds.map((id, index) => [id, index]));
+    return products.sort((a, b) => (rankById.get(a.id) ?? 0) - (rankById.get(b.id) ?? 0));
   }
 
   async findOne(tenantId: string, id: string) {

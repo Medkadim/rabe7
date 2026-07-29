@@ -59,6 +59,14 @@ export class ProductsController {
     return this.productsService.findAll(user.tenantId, query);
   }
 
+  @Get("popular")
+  @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
+  @ApiOperation({ summary: "The most-ordered products, ranked by total quantity across real orders" })
+  findPopular(@CurrentUser() user: AuthenticatedUser, @Query("limit") limit?: string) {
+    const parsed = limit ? Number(limit) : 8;
+    return this.productsService.findPopular(user.tenantId, Number.isFinite(parsed) && parsed > 0 ? parsed : 8);
+  }
+
   @Get(":id")
   @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   @ApiOperation({ summary: "Get a product by id" })
