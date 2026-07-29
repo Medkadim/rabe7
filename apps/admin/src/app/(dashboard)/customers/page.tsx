@@ -11,7 +11,10 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const SEGMENTS = ["RETAIL", "WHOLESALE", "HORECA", "KEY_ACCOUNT", "OTHER"] as const;
 
 interface Customer {
   id: string;
@@ -37,6 +40,7 @@ const customerFormSchema = z.object({
   code: z.string().min(1, "Required"),
   name: z.string().min(1, "Required"),
   phone: z.string().optional(),
+  segment: z.string().optional(),
   creditLimit: z.string().optional(),
   paymentTermsDays: z.string().optional(),
 });
@@ -66,7 +70,7 @@ export default function CustomersPage() {
 
   function startCreate() {
     setEditingId(null);
-    reset({ code: "", name: "", phone: "", creditLimit: "", paymentTermsDays: "" });
+    reset({ code: "", name: "", phone: "", segment: "RETAIL", creditLimit: "", paymentTermsDays: "" });
     setShowForm(true);
   }
 
@@ -76,6 +80,7 @@ export default function CustomersPage() {
       code: customer.code,
       name: customer.name,
       phone: customer.phone ?? "",
+      segment: customer.segment,
       creditLimit: customer.creditLimit,
       paymentTermsDays: String(customer.paymentTermsDays),
     });
@@ -86,6 +91,7 @@ export default function CustomersPage() {
     mutationFn: (values: CustomerForm) => {
       const body = JSON.stringify({
         ...values,
+        segment: values.segment || undefined,
         creditLimit: values.creditLimit ? Number(values.creditLimit) : undefined,
         paymentTermsDays: values.paymentTermsDays ? Number(values.paymentTermsDays) : undefined,
       });
@@ -165,6 +171,16 @@ export default function CustomersPage() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" {...register("phone")} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="segment">Segment</Label>
+                <Select id="segment" {...register("segment")}>
+                  {SEGMENTS.map((segment) => (
+                    <option key={segment} value={segment}>
+                      {segment}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="creditLimit">Credit limit</Label>

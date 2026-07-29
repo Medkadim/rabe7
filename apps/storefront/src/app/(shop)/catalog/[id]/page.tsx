@@ -27,7 +27,7 @@ interface ProductDetail {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { addItem } = useCart();
-  const { favoritedIds, toggle } = useFavorites();
+  const { favoritedIds, toggle, error: favoriteError } = useFavorites();
   const { data: product, isLoading } = useApiQuery<ProductDetail>(["products", "detail", id], `/products/${id}`);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -99,6 +99,7 @@ export default function ProductDetailPage() {
               {product.sku} · per {product.unit}
               {product.category && ` · ${product.category.name}`}
             </p>
+            {favoriteError && <p className="mt-1 text-xs text-critical">{favoriteError}</p>}
           </div>
 
           <p className="text-3xl font-semibold text-ink">{product.basePrice}</p>

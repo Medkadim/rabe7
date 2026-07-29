@@ -11,7 +11,13 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 interface Product {
   id: string;
@@ -24,6 +30,7 @@ interface Product {
   currentStock: number;
   minStock: number;
   status: string;
+  category: Category | null;
   images: { url: string }[];
 }
 
@@ -40,6 +47,7 @@ const createProductSchema = z.object({
   sku: z.string().min(1, "Required"),
   name: z.string().min(1, "Required"),
   description: z.string().optional(),
+  categoryId: z.string().optional(),
   unit: z.string().min(1, "Required"),
   basePrice: z.string().min(1, "Required"),
   taxRatePercent: z.string().optional(),
@@ -65,6 +73,7 @@ export default function ProductsPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const { data, isLoading } = useApiQuery<ProductListResponse>(["products", "list"], "/products?pageSize=50");
+  const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
 
   const {
     register,
@@ -77,7 +86,17 @@ export default function ProductsPage() {
     setEditingId(null);
     setImages([]);
     setUploadError(null);
-    reset({ sku: "", name: "", description: "", unit: "", basePrice: "", taxRatePercent: "", currentStock: "", minStock: "" });
+    reset({
+      sku: "",
+      name: "",
+      description: "",
+      categoryId: "",
+      unit: "",
+      basePrice: "",
+      taxRatePercent: "",
+      currentStock: "",
+      minStock: "",
+    });
     setShowForm(true);
   }
 
@@ -89,6 +108,7 @@ export default function ProductsPage() {
       sku: product.sku,
       name: product.name,
       description: product.description ?? "",
+      categoryId: product.category?.id ?? "",
       unit: product.unit,
       basePrice: product.basePrice,
       taxRatePercent: product.taxRatePercent,
@@ -102,6 +122,7 @@ export default function ProductsPage() {
     mutationFn: (values: CreateProductForm) => {
       const body = JSON.stringify({
         ...values,
+        categoryId: values.categoryId || undefined,
         basePrice: Number(values.basePrice),
         taxRatePercent: values.taxRatePercent ? Number(values.taxRatePercent) : undefined,
         currentStock: values.currentStock ? Number(values.currentStock) : undefined,
@@ -204,6 +225,17 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
+                <Label htmlFor="categoryId">Category</Label>
+                <Select id="categoryId" {...register("categoryId")}>
+                  <option value="">No category</option>
+                  {categories?.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="unit">Unit</Label>
                 <Input id="unit" placeholder="case" {...register("unit")} />
                 {errors.unit && <p className="text-xs text-critical">{errors.unit.message}</p>}
@@ -280,6 +312,7 @@ export default function ProductsPage() {
                 <th className="px-5 py-3 font-medium">Photo</th>
                 <th className="px-5 py-3 font-medium">SKU</th>
                 <th className="px-5 py-3 font-medium">Name</th>
+                <th className="px-5 py-3 font-medium">Category</th>
                 <th className="px-5 py-3 font-medium">Unit</th>
                 <th className="px-5 py-3 font-medium text-right">Base price</th>
                 <th className="px-5 py-3 font-medium text-right">Tax</th>
@@ -290,14 +323,14 @@ export default function ProductsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={9} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={9} className="px-5 py-6 text-center text-muted">
                     No products yet.
                   </td>
                 </tr>
@@ -318,6 +351,7 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-5 py-3 font-mono text-xs text-muted">{product.sku}</td>
                   <td className="px-5 py-3 font-medium text-ink">{product.name}</td>
+                  <td className="px-5 py-3 text-muted">{product.category?.name ?? "—"}</td>
                   <td className="px-5 py-3 text-muted">{product.unit}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{product.basePrice}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{product.taxRatePercent}%</td>

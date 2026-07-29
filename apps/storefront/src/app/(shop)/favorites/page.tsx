@@ -57,12 +57,13 @@ function FavoriteRow({ favorite, onRemove }: { favorite: ReturnType<typeof useFa
 }
 
 export default function FavoritesPage() {
-  const { favorites, isLoading, toggle } = useFavorites();
+  const { favorites, isLoading, toggle, error } = useFavorites();
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold text-ink">My favorites</h1>
 
+      {error && <p className="text-sm text-critical">{error}</p>}
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
       {!isLoading && favorites.length === 0 && (
         <p className="text-sm text-muted">

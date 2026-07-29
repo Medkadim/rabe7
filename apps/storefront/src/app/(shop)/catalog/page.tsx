@@ -36,7 +36,7 @@ interface Category {
 
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const { favoritedIds, toggle } = useFavorites();
+  const { favoritedIds, toggle, error: favoriteError } = useFavorites();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const outOfStock = product.currentStock <= 0;
@@ -74,6 +74,7 @@ function ProductCard({ product }: { product: Product }) {
           </p>
         </Link>
         <p className="text-lg font-semibold text-ink">{product.basePrice}</p>
+        {favoriteError && <p className="text-xs text-critical">{favoriteError}</p>}
         {outOfStock ? (
           <p className="mt-auto text-xs font-medium text-critical">Out of stock</p>
         ) : (

@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./auth-context";
 import { useApiQuery } from "./use-api-query";
-import { apiFetch } from "./api-client";
+import { apiFetch, ApiError } from "./api-client";
 
 export interface FavoriteProduct {
   id: string;
@@ -28,7 +28,7 @@ export interface Favorite {
 export function useFavorites() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading } = useApiQuery<Favorite[]>(["favorites"], "/favorites");
+  const { data, isLoading, error: listError } = useApiQuery<Favorite[]>(["favorites"], "/favorites");
 
   const favoritedIds = new Set((data ?? []).map((f) => f.productId));
 
@@ -54,5 +54,8 @@ export function useFavorites() {
     }
   };
 
-  return { favorites: data ?? [], favoritedIds, isLoading, toggle };
+  const failure = add.error ?? remove.error ?? listError;
+  const error = failure ? (failure instanceof ApiError ? failure.message : "Could not update favorites.") : null;
+
+  return { favorites: data ?? [], favoritedIds, isLoading, toggle, error };
 }
