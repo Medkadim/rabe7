@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProductImport } from "./product-import";
 
 interface Category {
   id: string;
@@ -26,6 +27,7 @@ interface Product {
   description: string | null;
   unit: string;
   basePrice: string;
+  costPrice: string | null;
   taxRatePercent: string;
   currentStock: number;
   minStock: number;
@@ -52,6 +54,7 @@ const createProductSchema = z.object({
   categoryId: z.string().optional(),
   unit: z.string().min(1, "Required"),
   basePrice: z.string().min(1, "Required"),
+  costPrice: z.string().optional(),
   taxRatePercent: z.string().optional(),
   currentStock: z.string().optional(),
   minStock: z.string().optional(),
@@ -67,10 +70,20 @@ function stockColor(product: Product) {
   return "text-success bg-success-soft";
 }
 
+function margin(product: Product): string {
+  if (!product.costPrice) return "—";
+  const cost = Number(product.costPrice);
+  const sale = Number(product.basePrice);
+  if (!cost) return "—";
+  const percent = ((sale - cost) / cost) * 100;
+  return `${percent.toFixed(0)}%`;
+}
+
 export default function ProductsPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -102,6 +115,7 @@ export default function ProductsPage() {
       categoryId: "",
       unit: "",
       basePrice: "",
+      costPrice: "",
       taxRatePercent: "",
       currentStock: "",
       minStock: "",
@@ -122,6 +136,7 @@ export default function ProductsPage() {
       categoryId: product.category?.id ?? "",
       unit: product.unit,
       basePrice: product.basePrice,
+      costPrice: product.costPrice ?? "",
       taxRatePercent: product.taxRatePercent,
       currentStock: String(product.currentStock),
       minStock: String(product.minStock),
@@ -156,6 +171,7 @@ export default function ProductsPage() {
         ...values,
         categoryId: values.categoryId || undefined,
         basePrice: Number(values.basePrice),
+        costPrice: values.costPrice ? Number(values.costPrice) : undefined,
         taxRatePercent: values.taxRatePercent ? Number(values.taxRatePercent) : undefined,
         currentStock: values.currentStock ? Number(values.currentStock) : undefined,
         minStock: values.minStock ? Number(values.minStock) : undefined,
@@ -201,6 +217,7 @@ export default function ProductsPage() {
   const canCreate = hasPermission("products.create");
   const canUpdate = hasPermission("products.update");
   const canDelete = hasPermission("products.delete");
+  const canReadCost = hasPermission("products.cost_read");
   const showActions = canUpdate || canDelete;
   const hasEnoughImages = images.length >= MIN_PRODUCT_IMAGES;
 
@@ -212,19 +229,35 @@ export default function ProductsPage() {
           <p className="text-sm text-muted">{data?.meta.total ?? 0} items in the catalog.</p>
         </div>
         {canCreate && (
-          <Button
-            onClick={() => {
-              if (showForm) {
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
                 setShowForm(false);
-              } else {
-                startCreate();
-              }
-            }}
-          >
-            {showForm ? "Cancel" : "New product"}
-          </Button>
+                setShowImport((v) => !v);
+              }}
+            >
+              {showImport ? "Cancel import" : "Import from Excel"}
+            </Button>
+            <Button
+              onClick={() => {
+                if (showForm) {
+                  setShowForm(false);
+                } else {
+                  setShowImport(false);
+                  startCreate();
+                }
+              }}
+            >
+              {showForm ? "Cancel" : "New product"}
+            </Button>
+          </div>
         )}
       </div>
+
+      {showImport && (
+        <ProductImport onClose={() => setShowImport(false)} />
+      )}
 
       {showForm && (
         <Card>
@@ -306,6 +339,12 @@ export default function ProductsPage() {
                 <Input id="basePrice" type="number" step="0.01" {...register("basePrice")} />
                 {errors.basePrice && <p className="text-xs text-critical">{errors.basePrice.message}</p>}
               </div>
+              {canReadCost && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="costPrice">Cost price</Label>
+                  <Input id="costPrice" type="number" step="0.01" {...register("costPrice")} />
+                </div>
+              )}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="taxRatePercent">Tax rate (%)</Label>
                 <Input id="taxRatePercent" type="number" step="0.01" {...register("taxRatePercent")} />
@@ -387,6 +426,7 @@ export default function ProductsPage() {
                 <th className="px-5 py-3 font-medium">Category</th>
                 <th className="px-5 py-3 font-medium">Unit</th>
                 <th className="px-5 py-3 font-medium text-right">Base price</th>
+                {canReadCost && <th className="px-5 py-3 font-medium text-right">Margin</th>}
                 <th className="px-5 py-3 font-medium text-right">Tax</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
                 {showActions && <th className="px-5 py-3 font-medium text-right">Actions</th>}
@@ -395,14 +435,14 @@ export default function ProductsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={10} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={10} className="px-5 py-6 text-center text-muted">
                     No products yet.
                   </td>
                 </tr>
@@ -426,6 +466,7 @@ export default function ProductsPage() {
                   <td className="px-5 py-3 text-muted">{product.category?.name ?? "—"}</td>
                   <td className="px-5 py-3 text-muted">{product.unit}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{product.basePrice}</td>
+                  {canReadCost && <td className="px-5 py-3 text-right tabular-nums">{margin(product)}</td>}
                   <td className="px-5 py-3 text-right tabular-nums">{product.taxRatePercent}%</td>
                   <td className="px-5 py-3 text-right">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${stockColor(product)}`}>

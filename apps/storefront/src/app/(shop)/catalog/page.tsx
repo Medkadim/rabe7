@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { Card } from "@/components/ui/card";
+import { HomeBanner } from "@/components/home-banner";
 import { cn } from "@/lib/utils";
 
 interface Product {
@@ -189,6 +190,8 @@ export default function CatalogPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {isDefaultView && <HomeBanner />}
+
       <div>
         <h1 className="text-xl font-semibold text-ink">Catalog</h1>
         <p className="text-sm text-muted">{total ?? 0} products available.</p>

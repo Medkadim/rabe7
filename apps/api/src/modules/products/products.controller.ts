@@ -6,6 +6,7 @@ import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductsDto } from "./dto/query-products.dto";
 import { CreateProductPriceDto, CreateCustomerPriceDto } from "./dto/product-price.dto";
 import { CreateCategoryDto, CreateBrandDto } from "./dto/category-brand.dto";
+import { BulkImportProductsDto } from "./dto/bulk-import-products.dto";
 import { RequirePermissions } from "../../common/decorators/permissions.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUser } from "../auth/types/authenticated-user.type";
@@ -52,11 +53,18 @@ export class ProductsController {
     return this.productsService.create(user.tenantId, dto);
   }
 
+  @Post("bulk-import")
+  @RequirePermissions(PERMISSIONS.PRODUCTS_CREATE)
+  @ApiOperation({ summary: "Create many products at once from parsed spreadsheet rows (no photos yet)" })
+  bulkImport(@CurrentUser() user: AuthenticatedUser, @Body() dto: BulkImportProductsDto) {
+    return this.productsService.bulkImport(user.tenantId, dto.products);
+  }
+
   @Get()
   @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   @ApiOperation({ summary: "List products with search, filtering and pagination" })
   findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: QueryProductsDto) {
-    return this.productsService.findAll(user.tenantId, query);
+    return this.productsService.findAll(user.tenantId, query, user.permissions.includes(PERMISSIONS.PRODUCTS_COST_READ));
   }
 
   @Get("popular")
@@ -64,14 +72,18 @@ export class ProductsController {
   @ApiOperation({ summary: "The most-ordered products, ranked by total quantity across real orders" })
   findPopular(@CurrentUser() user: AuthenticatedUser, @Query("limit") limit?: string) {
     const parsed = limit ? Number(limit) : 8;
-    return this.productsService.findPopular(user.tenantId, Number.isFinite(parsed) && parsed > 0 ? parsed : 8);
+    return this.productsService.findPopular(
+      user.tenantId,
+      Number.isFinite(parsed) && parsed > 0 ? parsed : 8,
+      user.permissions.includes(PERMISSIONS.PRODUCTS_COST_READ),
+    );
   }
 
   @Get(":id")
   @RequirePermissions(PERMISSIONS.PRODUCTS_READ)
   @ApiOperation({ summary: "Get a product by id" })
   findOne(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
-    return this.productsService.findOne(user.tenantId, id);
+    return this.productsService.findOne(user.tenantId, id, user.permissions.includes(PERMISSIONS.PRODUCTS_COST_READ));
   }
 
   @Patch(":id")

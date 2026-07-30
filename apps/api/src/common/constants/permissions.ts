@@ -17,6 +17,9 @@ export const PERMISSIONS = {
   PRODUCTS_CREATE: "products.create",
   PRODUCTS_UPDATE: "products.update",
   PRODUCTS_DELETE: "products.delete",
+  // Deliberately separate from PRODUCTS_READ: cost price is what the
+  // distributor pays, never shown to a retailer browsing the catalog.
+  PRODUCTS_COST_READ: "products.cost_read",
 
   ORDERS_READ: "orders.read",
   ORDERS_CREATE: "orders.create",
@@ -68,6 +71,7 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
   { code: PERMISSIONS.PRODUCTS_CREATE, module: "products", description: "Add new products" },
   { code: PERMISSIONS.PRODUCTS_UPDATE, module: "products", description: "Edit products and pricing" },
   { code: PERMISSIONS.PRODUCTS_DELETE, module: "products", description: "Archive products" },
+  { code: PERMISSIONS.PRODUCTS_COST_READ, module: "products", description: "View what products cost the distributor" },
 
   { code: PERMISSIONS.ORDERS_READ, module: "orders", description: "View orders" },
   { code: PERMISSIONS.ORDERS_CREATE, module: "orders", description: "Create orders" },

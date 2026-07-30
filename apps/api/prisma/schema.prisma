@@ -356,6 +356,11 @@ model Product {
   packagingUnit  String?
   packagingQty   Int           @default(1)
   basePrice      Decimal       @db.Decimal(14, 2)
+  // What the distributor pays, not what it sells for — never returned to a
+  // customer-role caller (see ProductsService), only staff with
+  // PRODUCTS_COST_READ. Nullable because it's optional on every existing
+  // product and most creation paths.
+  costPrice      Decimal?      @db.Decimal(14, 2)
   taxRatePercent Decimal       @default(0) @db.Decimal(5, 2)
   minStock       Int           @default(0)
   currentStock   Int           @default(0)

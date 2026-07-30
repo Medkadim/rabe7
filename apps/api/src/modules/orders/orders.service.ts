@@ -26,7 +26,7 @@ export class OrdersService {
   private async buildItems(tenantId: string, customerId: string, items: CreateOrderDto["items"]) {
     const computed = [];
     for (const item of items) {
-      const product = await this.products.findOne(tenantId, item.productId);
+      const product = await this.products.findOne(tenantId, item.productId, true);
       const unitPrice = await this.products.resolvePrice(tenantId, item.productId, customerId, item.quantity);
 
       // A manually-applied discount (rep judgment call) and a promotion

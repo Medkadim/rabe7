@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -6,6 +7,7 @@ import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductsDto } from "./dto/query-products.dto";
 import { CreateProductPriceDto, CreateCustomerPriceDto } from "./dto/product-price.dto";
 import { CreateCategoryDto, CreateBrandDto } from "./dto/category-brand.dto";
+import { BulkImportProductRowDto } from "./dto/bulk-import-products.dto";
 import { paginate, PaginatedResult } from "../../common/dto/pagination-query.dto";
 
 @Injectable()
@@ -50,7 +52,55 @@ export class ProductsService {
     });
   }
 
-  async findAll(tenantId: string, query: QueryProductsDto): Promise<PaginatedResult<unknown>> {
+  // Historical-data import from a spreadsheet — no photos yet (added
+  // per-product afterward from the admin UI), so this bypasses the
+  // "at least 3 images" rule create() enforces for a hand-added product.
+  // Categories are matched by name (case-insensitive) or created; SKUs
+  // aren't in the source data, so each gets a generated one.
+  async bulkImport(tenantId: string, rows: BulkImportProductRowDto[]): Promise<{ imported: number; categoriesCreated: number }> {
+    const categoryNames = [...new Set(rows.map((r) => r.categoryName?.trim()).filter((n): n is string => !!n))];
+
+    const existingCategories = await this.prisma.category.findMany({
+      where: { tenantId, name: { in: categoryNames } },
+    });
+    const categoryIdByName = new Map(existingCategories.map((c) => [c.name, c.id]));
+
+    const toCreate = categoryNames.filter((name) => !categoryIdByName.has(name));
+    for (const name of toCreate) {
+      const category = await this.prisma.category.create({ data: { tenantId, name } });
+      categoryIdByName.set(name, category.id);
+    }
+
+    const { count } = await this.prisma.product.createMany({
+      data: rows.map((row) => ({
+        tenantId,
+        sku: `WSL-${randomBytes(4).toString("hex").toUpperCase()}`,
+        name: row.name,
+        categoryId: row.categoryName ? (categoryIdByName.get(row.categoryName.trim()) ?? null) : null,
+        unit: row.unit,
+        basePrice: row.basePrice,
+        costPrice: row.costPrice,
+      })),
+      skipDuplicates: true,
+    });
+
+    return { imported: count, categoriesCreated: toCreate.length };
+  }
+
+  // costPrice is what the distributor pays — never leaves the API for a
+  // caller without PRODUCTS_COST_READ, regardless of which list/detail
+  // endpoint they hit.
+  private stripCost<T extends { costPrice?: unknown }>(product: T, includeCost: boolean): T {
+    if (includeCost) return product;
+    const { costPrice: _costPrice, ...rest } = product;
+    return rest as T;
+  }
+
+  async findAll(
+    tenantId: string,
+    query: QueryProductsDto,
+    includeCost: boolean,
+  ): Promise<PaginatedResult<unknown>> {
     const where: Prisma.ProductWhereInput = {
       tenantId,
       deletedAt: null,
@@ -81,13 +131,17 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    return paginate(data, total, query);
+    return paginate(
+      data.map((p) => this.stripCost(p, includeCost)),
+      total,
+      query,
+    );
   }
 
   // "Most ordered" — ranked by total quantity across real orders (anything
   // past DRAFT), not just order count, so a retailer bulk-buying one SKU
   // outweighs several one-off single-unit orders of another.
-  async findPopular(tenantId: string, limit: number) {
+  async findPopular(tenantId: string, limit: number, includeCost: boolean) {
     const ranked = await this.prisma.orderItem.groupBy({
       by: ["productId"],
       where: { order: { tenantId, status: { notIn: ["DRAFT", "CANCELLED"] } } },
@@ -106,10 +160,12 @@ export class ProductsService {
     // groupBy doesn't preserve rank order once we re-fetch by id, so re-sort
     // the fetched products to match the popularity ranking.
     const rankById = new Map(productIds.map((id, index) => [id, index]));
-    return products.sort((a, b) => (rankById.get(a.id) ?? 0) - (rankById.get(b.id) ?? 0));
+    return products
+      .sort((a, b) => (rankById.get(a.id) ?? 0) - (rankById.get(b.id) ?? 0))
+      .map((p) => this.stripCost(p, includeCost));
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, includeCost: boolean) {
     const product = await this.prisma.product.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: {
@@ -127,7 +183,7 @@ export class ProductsService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateProductDto) {
-    await this.findOne(tenantId, id);
+    await this.findOne(tenantId, id, true);
     const { images, ...productData } = dto;
     return this.prisma.product.update({
       where: { id },
@@ -140,12 +196,12 @@ export class ProductsService {
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
-    await this.findOne(tenantId, id);
+    await this.findOne(tenantId, id, true);
     await this.prisma.product.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
   async addPriceTier(tenantId: string, productId: string, dto: CreateProductPriceDto) {
-    await this.findOne(tenantId, productId);
+    await this.findOne(tenantId, productId, true);
     return this.prisma.productPrice.create({
       data: {
         tenantId,
@@ -160,7 +216,7 @@ export class ProductsService {
   }
 
   async setCustomerPrice(tenantId: string, productId: string, dto: CreateCustomerPriceDto) {
-    await this.findOne(tenantId, productId);
+    await this.findOne(tenantId, productId, true);
     return this.prisma.customerPrice.upsert({
       where: { tenantId_customerId_productId: { tenantId, customerId: dto.customerId, productId } },
       create: {
@@ -214,7 +270,7 @@ export class ProductsService {
     });
     if (tier) return Number(tier.price);
 
-    const product = await this.findOne(tenantId, productId);
+    const product = await this.findOne(tenantId, productId, true);
     return Number(product.basePrice);
   }
 }

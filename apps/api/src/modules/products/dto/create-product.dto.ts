@@ -53,6 +53,13 @@ export class CreateProductDto {
   @Min(0)
   basePrice!: number;
 
+  @ApiPropertyOptional({ description: "What the distributor pays — staff-only, never shown to customers" })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  costPrice?: number;
+
   @ApiPropertyOptional({ default: 0 })
   @IsOptional()
   @Type(() => Number)
