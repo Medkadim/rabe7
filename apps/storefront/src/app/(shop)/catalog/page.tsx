@@ -34,7 +34,7 @@ interface Category {
   name: string;
 }
 
-type QuickFilter = "new" | "popular" | "promotion" | "featured" | null;
+type QuickFilter = "new" | "popular" | "promotion" | null;
 
 // Small hand-drawn icon set (no icon library in this app) — one stroke
 // style, 24x24, matching the FavoriteButton heart so shortcuts and the
@@ -75,7 +75,6 @@ const SHORTCUTS: { id: QuickFilter; label: string; icon: () => React.ReactElemen
   { id: "new", label: "New arrivals", icon: SparkleIcon },
   { id: "popular", label: "Most ordered", icon: FlameIcon },
   { id: "promotion", label: "Special offers", icon: TagIcon },
-  { id: "featured", label: "Promotions", icon: PercentIcon },
 ];
 
 const CATEGORY_COLORS = ["bg-brand", "bg-accent", "bg-success", "bg-warning", "bg-critical"];
@@ -164,7 +163,6 @@ export default function CatalogPage() {
   if (search) params.set("search", search);
   if (categoryId) params.set("categoryId", categoryId);
   if (quickFilter === "promotion") params.set("promotion", "true");
-  if (quickFilter === "featured") params.set("featured", "true");
 
   const productsPath = quickFilter === "popular" ? "/products/popular?limit=20" : `/products?${params.toString()}`;
 
@@ -221,6 +219,12 @@ export default function CatalogPage() {
               <span className="w-16 text-center text-xs text-muted">{label}</span>
             </button>
           ))}
+          <Link href="/promotions" className="flex shrink-0 flex-col items-center gap-1.5">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
+              <PercentIcon />
+            </span>
+            <span className="w-16 text-center text-xs text-muted">Promotions</span>
+          </Link>
         </div>
       )}
 

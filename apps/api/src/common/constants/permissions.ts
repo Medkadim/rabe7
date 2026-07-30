@@ -32,6 +32,11 @@ export const PERMISSIONS = {
   PROMOTIONS_CREATE: "promotions.create",
   PROMOTIONS_UPDATE: "promotions.update",
   PROMOTIONS_DELETE: "promotions.delete",
+  // Deliberately separate from PROMOTIONS_READ: the staff endpoints that
+  // permission gates return every promotion's full customer-targeting list,
+  // which a retailer must never see. This only ever reaches the
+  // customer-scoped "my active promotions" endpoint.
+  PROMOTIONS_READ_OWN: "promotions.read_own",
 
   WAREHOUSE_READ: "warehouse.read",
   WAREHOUSE_RECEIVE: "warehouse.receive",
@@ -78,6 +83,7 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
   { code: PERMISSIONS.PROMOTIONS_CREATE, module: "promotions", description: "Create promotions" },
   { code: PERMISSIONS.PROMOTIONS_UPDATE, module: "promotions", description: "Edit promotions" },
   { code: PERMISSIONS.PROMOTIONS_DELETE, module: "promotions", description: "Deactivate promotions" },
+  { code: PERMISSIONS.PROMOTIONS_READ_OWN, module: "promotions", description: "View promotions that apply to your own account" },
 
   { code: PERMISSIONS.WAREHOUSE_READ, module: "warehouse", description: "View stock levels and movement history" },
   { code: PERMISSIONS.WAREHOUSE_RECEIVE, module: "warehouse", description: "Record incoming stock" },

@@ -29,6 +29,13 @@ export class PromotionsController {
     return this.promotionsService.findAll(user.tenantId, query);
   }
 
+  @Get("active")
+  @RequirePermissions(PERMISSIONS.PROMOTIONS_READ_OWN)
+  @ApiOperation({ summary: "List the currently-active promotions that apply to the signed-in customer" })
+  findActiveForCustomer(@CurrentUser() user: AuthenticatedUser) {
+    return this.promotionsService.findActiveForCustomer(user.tenantId, user.customerId);
+  }
+
   @Get(":id")
   @RequirePermissions(PERMISSIONS.PROMOTIONS_READ)
   @ApiOperation({ summary: "Get a promotion" })

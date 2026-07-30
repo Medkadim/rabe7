@@ -30,6 +30,8 @@ interface Product {
   currentStock: number;
   minStock: number;
   status: string;
+  isFeatured: boolean;
+  isPromotion: boolean;
   category: Category | null;
   images: { url: string }[];
 }
@@ -53,6 +55,8 @@ const createProductSchema = z.object({
   taxRatePercent: z.string().optional(),
   currentStock: z.string().optional(),
   minStock: z.string().optional(),
+  isFeatured: z.boolean().optional(),
+  isPromotion: z.boolean().optional(),
 });
 
 type CreateProductForm = z.infer<typeof createProductSchema>;
@@ -72,6 +76,10 @@ export default function ProductsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+
   const { data, isLoading } = useApiQuery<ProductListResponse>(["products", "list"], "/products?pageSize=50");
   const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
 
@@ -79,6 +87,7 @@ export default function ProductsPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateProductForm>({ resolver: zodResolver(createProductSchema) });
 
@@ -96,6 +105,8 @@ export default function ProductsPage() {
       taxRatePercent: "",
       currentStock: "",
       minStock: "",
+      isFeatured: false,
+      isPromotion: false,
     });
     setShowForm(true);
   }
@@ -114,9 +125,30 @@ export default function ProductsPage() {
       taxRatePercent: product.taxRatePercent,
       currentStock: String(product.currentStock),
       minStock: String(product.minStock),
+      isFeatured: product.isFeatured,
+      isPromotion: product.isPromotion,
     });
     setShowForm(true);
   }
+
+  const createCategory = useMutation({
+    mutationFn: (name: string) => apiFetch<Category>("/products/categories", accessToken, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+    onSuccess: async (category) => {
+      // Wait for the categories list to actually refetch before selecting
+      // the new one — otherwise the <select> has no matching <option> yet
+      // and silently falls back to displaying "No category" even though
+      // the form state is technically holding the right id.
+      await queryClient.invalidateQueries({ queryKey: ["products", "categories"] });
+      setValue("categoryId", category.id);
+      setNewCategoryName("");
+      setShowNewCategory(false);
+      setCategoryError(null);
+    },
+    onError: (err) => setCategoryError(err instanceof ApiError ? err.message : "Could not create the category."),
+  });
 
   const saveProduct = useMutation({
     mutationFn: (values: CreateProductForm) => {
@@ -225,15 +257,44 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="categoryId">Category</Label>
-                <Select id="categoryId" {...register("categoryId")}>
-                  <option value="">No category</option>
-                  {categories?.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="categoryId">Category</Label>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCategory((v) => !v)}
+                    className="text-xs font-medium text-accent-ink underline"
+                  >
+                    {showNewCategory ? "Cancel" : "+ New category"}
+                  </button>
+                </div>
+                {showNewCategory ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="e.g. Beverages"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!newCategoryName.trim() || createCategory.isPending}
+                      onClick={() => createCategory.mutate(newCategoryName.trim())}
+                    >
+                      {createCategory.isPending ? "Adding…" : "Add"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Select id="categoryId" {...register("categoryId")}>
+                    <option value="">No category</option>
+                    {categories?.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                {categoryError && <p className="text-xs text-critical">{categoryError}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="unit">Unit</Label>
@@ -256,6 +317,17 @@ export default function ProductsPage() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="minStock">Minimum stock</Label>
                 <Input id="minStock" type="number" {...register("minStock")} />
+              </div>
+
+              <div className="col-span-3 flex items-center gap-6">
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" className="h-4 w-4" {...register("isFeatured")} />
+                  Featured — highlighted to customers
+                </label>
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" className="h-4 w-4" {...register("isPromotion")} />
+                  Special offer — shown as a promotion
+                </label>
               </div>
 
               <div className="col-span-3 flex flex-col gap-1.5">

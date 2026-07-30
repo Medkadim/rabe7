@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, PromotionType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreatePromotionDto } from "./dto/create-promotion.dto";
@@ -106,6 +106,46 @@ export class PromotionsService {
     ]);
 
     return paginate(data, total, query);
+  }
+
+  // Customer-facing — deliberately a separate method from findAll/findOne
+  // rather than a permission grant on those, because both include the raw
+  // `customers` relation (which OTHER customers a promotion targets). A
+  // retailer must never see that list, so this one never selects it, and
+  // only returns promotions that are actually active and either untargeted
+  // or targeted at this specific customer.
+  async findActiveForCustomer(tenantId: string, customerId: string | null | undefined) {
+    if (!customerId) {
+      throw new ForbiddenException("Only a customer account can view its own promotions.");
+    }
+    const now = new Date();
+    return this.prisma.promotion.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        startsAt: { lte: now },
+        AND: [
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+          { OR: [{ customers: { none: {} } }, { customers: { some: { customerId } } }] },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        discountPercent: true,
+        discountAmount: true,
+        minQuantity: true,
+        buyQuantity: true,
+        getQuantity: true,
+        startsAt: true,
+        endsAt: true,
+        rewardProduct: { select: { id: true, name: true } },
+        products: { select: { product: { select: { id: true, name: true, sku: true } } } },
+      },
+      orderBy: { startsAt: "desc" },
+    });
   }
 
   async findOne(tenantId: string, id: string) {
