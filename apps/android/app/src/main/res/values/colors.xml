@@ -1,4 +1,4 @@
 <resources>
-    <!-- Matches --paper from the web apps' light theme. -->
+    <!-- Matches the "paper" background token from the web apps' light theme. -->
     <color name="ic_launcher_background">#EEF0F4</color>
 </resources>
