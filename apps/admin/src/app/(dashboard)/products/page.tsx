@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductImport } from "./product-import";
+import { CategoryManager } from "./category-manager";
 
 interface Category {
   id: string;
@@ -84,7 +85,9 @@ export default function ProductsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [images, setImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -195,6 +198,37 @@ export default function ProductsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
   });
 
+  const bulkDeleteProducts = useMutation({
+    mutationFn: (ids: string[]) =>
+      apiFetch<{ deleted: number }>("/products/bulk-delete", accessToken, {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setSelectedIds(new Set());
+    },
+  });
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allVisibleSelected = !!data?.data.length && data.data.every((p) => selectedIds.has(p.id));
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(data?.data.map((p) => p.id)));
+    }
+  }
+
   async function handleImagesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = ""; // lets the same file be re-picked if removed later
@@ -220,6 +254,7 @@ export default function ProductsPage() {
   const canReadCost = hasPermission("products.cost_read");
   const showActions = canUpdate || canDelete;
   const hasEnoughImages = images.length >= MIN_PRODUCT_IMAGES;
+  const columnCount = 8 + (canDelete ? 1 : 0) + (canReadCost ? 1 : 0) + (showActions ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -228,36 +263,62 @@ export default function ProductsPage() {
           <h1 className="text-xl font-semibold text-ink">Products</h1>
           <p className="text-sm text-muted">{data?.meta.total ?? 0} items in the catalog.</p>
         </div>
-        {canCreate && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {canDelete && selectedIds.size > 0 && (
             <Button
-              variant="outline"
+              variant="destructive"
+              disabled={bulkDeleteProducts.isPending}
               onClick={() => {
-                setShowForm(false);
-                setShowImport((v) => !v);
-              }}
-            >
-              {showImport ? "Cancel import" : "Import from Excel"}
-            </Button>
-            <Button
-              onClick={() => {
-                if (showForm) {
-                  setShowForm(false);
-                } else {
-                  setShowImport(false);
-                  startCreate();
+                if (window.confirm(`Archive ${selectedIds.size} selected product(s)? They will no longer appear in the catalog.`)) {
+                  bulkDeleteProducts.mutate([...selectedIds]);
                 }
               }}
             >
-              {showForm ? "Cancel" : "New product"}
+              {bulkDeleteProducts.isPending ? "Deleting…" : `Delete selected (${selectedIds.size})`}
             </Button>
-          </div>
-        )}
+          )}
+          {canCreate && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false);
+                  setShowImport(false);
+                  setShowCategoryManager((v) => !v);
+                }}
+              >
+                {showCategoryManager ? "Close categories" : "Manage categories"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false);
+                  setShowCategoryManager(false);
+                  setShowImport((v) => !v);
+                }}
+              >
+                {showImport ? "Cancel import" : "Import from Excel"}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (showForm) {
+                    setShowForm(false);
+                  } else {
+                    setShowImport(false);
+                    setShowCategoryManager(false);
+                    startCreate();
+                  }
+                }}
+              >
+                {showForm ? "Cancel" : "New product"}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      {showImport && (
-        <ProductImport onClose={() => setShowImport(false)} />
-      )}
+      {showImport && <ProductImport onClose={() => setShowImport(false)} />}
+      {showCategoryManager && <CategoryManager onClose={() => setShowCategoryManager(false)} />}
 
       {showForm && (
         <Card>
@@ -420,6 +481,17 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                {canDelete && (
+                  <th className="px-5 py-3 font-medium">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Select all products"
+                    />
+                  </th>
+                )}
                 <th className="px-5 py-3 font-medium">Photo</th>
                 <th className="px-5 py-3 font-medium">SKU</th>
                 <th className="px-5 py-3 font-medium">Name</th>
@@ -435,20 +507,31 @@ export default function ProductsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={10} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={columnCount} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={columnCount} className="px-5 py-6 text-center text-muted">
                     No products yet.
                   </td>
                 </tr>
               )}
               {data?.data.map((product) => (
                 <tr key={product.id} className="border-b border-line last:border-0">
+                  {canDelete && (
+                    <td className="px-5 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleSelected(product.id)}
+                        aria-label={`Select ${product.name}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-5 py-3">
                     {product.images[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element

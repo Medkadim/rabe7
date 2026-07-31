@@ -5,8 +5,9 @@ import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductsDto } from "./dto/query-products.dto";
 import { CreateProductPriceDto, CreateCustomerPriceDto } from "./dto/product-price.dto";
-import { CreateCategoryDto, CreateBrandDto } from "./dto/category-brand.dto";
+import { CreateCategoryDto, CreateBrandDto, UpdateCategoryDto } from "./dto/category-brand.dto";
 import { BulkImportProductsDto } from "./dto/bulk-import-products.dto";
+import { BulkDeleteProductsDto } from "./dto/bulk-delete-products.dto";
 import { RequirePermissions } from "../../common/decorators/permissions.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUser } from "../auth/types/authenticated-user.type";
@@ -30,6 +31,25 @@ export class ProductsController {
   @ApiOperation({ summary: "List product categories" })
   listCategories(@CurrentUser() user: AuthenticatedUser) {
     return this.productsService.listCategories(user.tenantId);
+  }
+
+  @Patch("categories/:id")
+  @RequirePermissions(PERMISSIONS.PRODUCTS_UPDATE)
+  @ApiOperation({ summary: "Rename or reparent a category" })
+  updateCategory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    return this.productsService.updateCategory(user.tenantId, id, dto);
+  }
+
+  @Delete("categories/:id")
+  @RequirePermissions(PERMISSIONS.PRODUCTS_DELETE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Delete a category — its products become uncategorized" })
+  async deleteCategory(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string): Promise<void> {
+    await this.productsService.deleteCategory(user.tenantId, id);
   }
 
   @Post("brands")
@@ -58,6 +78,13 @@ export class ProductsController {
   @ApiOperation({ summary: "Create many products at once from parsed spreadsheet rows (no photos yet)" })
   bulkImport(@CurrentUser() user: AuthenticatedUser, @Body() dto: BulkImportProductsDto) {
     return this.productsService.bulkImport(user.tenantId, dto.products);
+  }
+
+  @Post("bulk-delete")
+  @RequirePermissions(PERMISSIONS.PRODUCTS_DELETE)
+  @ApiOperation({ summary: "Archive many products at once" })
+  bulkDelete(@CurrentUser() user: AuthenticatedUser, @Body() dto: BulkDeleteProductsDto) {
+    return this.productsService.bulkDelete(user.tenantId, dto.ids);
   }
 
   @Get()

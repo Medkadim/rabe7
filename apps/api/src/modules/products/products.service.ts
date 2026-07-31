@@ -6,7 +6,7 @@ import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductsDto } from "./dto/query-products.dto";
 import { CreateProductPriceDto, CreateCustomerPriceDto } from "./dto/product-price.dto";
-import { CreateCategoryDto, CreateBrandDto } from "./dto/category-brand.dto";
+import { CreateCategoryDto, CreateBrandDto, UpdateCategoryDto } from "./dto/category-brand.dto";
 import { BulkImportProductRowDto } from "./dto/bulk-import-products.dto";
 import { paginate, PaginatedResult } from "../../common/dto/pagination-query.dto";
 
@@ -16,12 +16,49 @@ export class ProductsService {
 
   // ---- Categories ----------------------------------------------------
 
-  createCategory(tenantId: string, dto: CreateCategoryDto) {
-    return this.prisma.category.create({ data: { tenantId, name: dto.name, parentId: dto.parentId } });
+  async createCategory(tenantId: string, dto: CreateCategoryDto) {
+    try {
+      return await this.prisma.category.create({ data: { tenantId, name: dto.name, parentId: dto.parentId } });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ConflictException(`A category named "${dto.name}" already exists.`);
+      }
+      throw err;
+    }
   }
 
   listCategories(tenantId: string) {
     return this.prisma.category.findMany({ where: { tenantId, isActive: true }, orderBy: { name: "asc" } });
+  }
+
+  async updateCategory(tenantId: string, id: string, dto: UpdateCategoryDto) {
+    const category = await this.prisma.category.findFirst({ where: { id, tenantId, isActive: true } });
+    if (!category) {
+      throw new NotFoundException("Category not found.");
+    }
+    try {
+      return await this.prisma.category.update({ where: { id }, data: dto });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ConflictException(`A category named "${dto.name}" already exists.`);
+      }
+      throw err;
+    }
+  }
+
+  // Soft delete — the category row stays (past orders still reference
+  // products that referenced it), but it disappears from listCategories
+  // and every product that pointed at it becomes uncategorized rather
+  // than keeping a hidden, unmanageable category name.
+  async deleteCategory(tenantId: string, id: string): Promise<void> {
+    const category = await this.prisma.category.findFirst({ where: { id, tenantId, isActive: true } });
+    if (!category) {
+      throw new NotFoundException("Category not found.");
+    }
+    await this.prisma.$transaction([
+      this.prisma.product.updateMany({ where: { tenantId, categoryId: id }, data: { categoryId: null } }),
+      this.prisma.category.update({ where: { id }, data: { isActive: false } }),
+    ]);
   }
 
   // ---- Brands ----------------------------------------------------------
@@ -85,6 +122,14 @@ export class ProductsService {
     });
 
     return { imported: count, categoriesCreated: toCreate.length };
+  }
+
+  async bulkDelete(tenantId: string, ids: string[]): Promise<{ deleted: number }> {
+    const { count } = await this.prisma.product.updateMany({
+      where: { id: { in: ids }, tenantId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    return { deleted: count };
   }
 
   // costPrice is what the distributor pays — never leaves the API for a
