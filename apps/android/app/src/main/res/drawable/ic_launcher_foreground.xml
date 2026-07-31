@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Wasla mark (see apps/storefront's wasla-mark.tsx): two brand-navy
+     nodes joined by an accent-amber line, centered in the adaptive icon's
+     66dp safe zone (scale 66/48, centered offset 21). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="21"
+        android:translateY="21"
+        android:scaleX="1.375"
+        android:scaleY="1.375">
+        <path
+            android:pathData="M17,31 Q24,21 31,17"
+            android:strokeColor="#C97B2C"
+            android:strokeWidth="3.4"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M7.5,33 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0 Z"
+            android:fillColor="#1B3A63" />
+        <path
+            android:pathData="M25.5,15 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0 Z"
+            android:fillColor="#1B3A63" />
+    </group>
+</vector>

@@ -1,0 +1,57 @@
+name: Build Android APK
+
+# Manual only — this isn't part of the normal web app CI, it's a way to
+# produce an installable .apk of the customer storefront wrapper on demand
+# (this sandbox can't build Android apps itself; dl.google.com is blocked
+# by its egress policy). The APK is published to the apk-builds branch
+# rather than as a workflow artifact so it can be fetched with a plain
+# git pull instead of an authenticated API call.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build debug APK
+        working-directory: apps/android
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publish APK to apk-builds branch
+        run: |
+          set -e
+          APK_PATH=$(find apps/android -name "*.apk" | head -n1)
+          echo "Built: $APK_PATH"
+          mkdir -p /tmp/apk-out
+          cp "$APK_PATH" /tmp/apk-out/wasla-customer.apk
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin apk-builds 2>/dev/null || true
+          if git rev-parse --verify origin/apk-builds >/dev/null 2>&1; then
+            git checkout -B apk-builds origin/apk-builds
+          else
+            git checkout --orphan apk-builds
+          fi
+          git rm -rf . >/dev/null 2>&1 || true
+          cp /tmp/apk-out/wasla-customer.apk .
+          git add wasla-customer.apk
+          git commit -m "Build Wasla customer APK ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          git push origin apk-builds --force

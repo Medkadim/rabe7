@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Wasla</string>
+    <!-- Update this if the server's address ever changes, then rebuild. -->
+    <string name="base_url">http://204.168.193.65:3001</string>
+</resources>
