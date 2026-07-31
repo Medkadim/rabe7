@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,8 +43,10 @@ const MIN_PRODUCT_IMAGES = 3;
 
 interface ProductListResponse {
   data: Product[];
-  meta: { total: number };
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
 }
+
+const PAGE_SIZE = 50;
 
 // Numeric fields stay as strings at the form layer — see the Customers page
 // for why (keeps the Zod resolver's input/output types identical).
@@ -96,7 +98,28 @@ export default function ProductsPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const { data, isLoading } = useApiQuery<ProductListResponse>(["products", "list"], "/products?pageSize=50");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  // Debounce so every keystroke doesn't fire a request.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+    setSelectedIds(new Set());
+  }, [search]);
+
+  const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+  if (search) params.set("search", search);
+
+  const { data, isLoading } = useApiQuery<ProductListResponse>(
+    ["products", "list", search, page],
+    `/products?${params.toString()}`,
+  );
   const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
 
   const {
@@ -229,6 +252,11 @@ export default function ProductsPage() {
     }
   }
 
+  function goToPage(next: number) {
+    setPage(next);
+    setSelectedIds(new Set());
+  }
+
   async function handleImagesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = ""; // lets the same file be re-picked if removed later
@@ -316,6 +344,14 @@ export default function ProductsPage() {
           )}
         </div>
       </div>
+
+      <Input
+        type="search"
+        placeholder="Search by name, SKU, or barcode…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="max-w-sm"
+      />
 
       {showImport && <ProductImport onClose={() => setShowImport(false)} />}
       {showCategoryManager && <CategoryManager onClose={() => setShowCategoryManager(false)} />}
@@ -587,6 +623,28 @@ export default function ProductsPage() {
           </table>
         </div>
       </Card>
+
+      {!!data && data.meta.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted">
+            Page {data.meta.page} of {data.meta.totalPages} — {data.meta.total} products total
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= data.meta.totalPages}
+              onClick={() => goToPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
       {deleteProduct.isError && (
         <p className="text-sm text-critical">
           {deleteProduct.error instanceof ApiError ? deleteProduct.error.message : "Could not archive the product."}
