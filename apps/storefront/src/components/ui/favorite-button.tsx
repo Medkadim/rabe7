@@ -17,7 +17,7 @@ export function FavoriteButton({ active, onToggle, className }: FavoriteButtonPr
         e.stopPropagation();
         onToggle();
       }}
-      aria-label={active ? "Remove from favorites" : "Add to favorites"}
+      aria-label={active ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}
       aria-pressed={active}
       className={cn(
         "flex h-8 w-8 items-center justify-center rounded-full bg-paper-raised/90 shadow-sm hover:bg-paper-raised",

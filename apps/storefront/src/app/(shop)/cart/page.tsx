@@ -41,18 +41,18 @@ export default function CartPage() {
       clear();
       router.push("/orders");
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Could not place the order."),
+    onError: (err) => setError(err instanceof ApiError ? err.message : "تعذر إرسال الطلب."),
   });
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-ink">Your cart</h1>
+      <h1 className="text-xl font-semibold text-ink">سلتك</h1>
 
       {items.length === 0 ? (
         <p className="text-sm text-muted">
-          Your cart is empty.{" "}
+          سلتك فارغة.{" "}
           <Link href="/catalog" className="text-accent-ink underline">
-            Browse the catalog
+            تصفح المنتجات
           </Link>
           .
         </p>
@@ -63,7 +63,7 @@ export default function CartPage() {
               <div key={item.productId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-ink">{item.name}</p>
-                  <p className="text-xs text-muted">{item.unitPrice} each</p>
+                  <p className="text-xs text-muted">{item.unitPrice} للوحدة</p>
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4">
                   <QuantityStepper value={item.quantity} onChange={(qty) => updateQuantity(item.productId, qty)} />
@@ -71,14 +71,14 @@ export default function CartPage() {
                     {(item.unitPrice * item.quantity).toFixed(2)}
                   </p>
                   <Button variant="ghost" size="sm" onClick={() => removeItem(item.productId)}>
-                    Remove
+                    إزالة
                   </Button>
                 </div>
               </div>
             ))}
           </div>
           <div className="flex items-center justify-between border-t border-line p-4">
-            <span className="text-sm text-muted">Total</span>
+            <span className="text-sm text-muted">المجموع</span>
             <span className="text-lg font-semibold text-ink">{total.toFixed(2)}</span>
           </div>
         </Card>
@@ -86,7 +86,7 @@ export default function CartPage() {
 
       {!isApproved && items.length > 0 && (
         <p className="text-sm text-warning">
-          Your account is still pending approval — you'll be able to place this order once it's approved.
+          حسابك لا يزال قيد الموافقة — ستتمكن من إرسال هذا الطلب بمجرد الموافقة عليه.
         </p>
       )}
       {error && <p className="text-sm text-critical">{error}</p>}
@@ -97,7 +97,7 @@ export default function CartPage() {
           disabled={checkout.isPending || !isApproved}
           className="self-start"
         >
-          {checkout.isPending ? "Placing order…" : "Place order"}
+          {checkout.isPending ? "جارٍ إرسال الطلب…" : "إتمام الطلب"}
         </Button>
       )}
     </div>

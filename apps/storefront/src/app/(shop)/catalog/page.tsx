@@ -73,9 +73,9 @@ function PercentIcon() {
 }
 
 const SHORTCUTS: { id: QuickFilter; label: string; icon: () => React.ReactElement }[] = [
-  { id: "new", label: "New arrivals", icon: SparkleIcon },
-  { id: "popular", label: "Most ordered", icon: FlameIcon },
-  { id: "promotion", label: "Special offers", icon: TagIcon },
+  { id: "new", label: "وصل حديثًا", icon: SparkleIcon },
+  { id: "popular", label: "الأكثر طلبًا", icon: FlameIcon },
+  { id: "promotion", label: "عروض خاصة", icon: TagIcon },
 ];
 
 const CATEGORY_COLORS = ["bg-brand", "bg-accent", "bg-success", "bg-warning", "bg-critical"];
@@ -99,30 +99,30 @@ function ProductCard({ product }: { product: Product }) {
         {(product.isPromotion || product.isFeatured) && (
           <span
             className={cn(
-              "absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium",
+              "absolute start-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium",
               product.isPromotion ? "bg-critical text-white" : "bg-brand text-white",
             )}
           >
-            {product.isPromotion ? "Promo" : "Featured"}
+            {product.isPromotion ? "عرض" : "مميز"}
           </span>
         )}
         <FavoriteButton
           active={favoritedIds.has(product.id)}
           onToggle={() => toggle(product.id)}
-          className="absolute right-2 top-2"
+          className="absolute end-2 top-2"
         />
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link href={`/catalog/${product.id}`}>
           <p className="font-medium text-ink hover:underline">{product.name}</p>
           <p className="text-xs text-muted">
-            {product.sku} · per {product.unit}
+            {product.sku} · {product.unit}
           </p>
         </Link>
         <p className="text-lg font-semibold text-ink">{product.basePrice}</p>
         {favoriteError && <p className="text-xs text-critical">{favoriteError}</p>}
         {outOfStock ? (
-          <p className="mt-auto text-xs font-medium text-critical">Out of stock</p>
+          <p className="mt-auto text-xs font-medium text-critical">غير متوفر</p>
         ) : (
           <div className="mt-auto flex flex-col gap-2">
             <QuantityStepper value={quantity} onChange={setQuantity} className="w-full" />
@@ -135,7 +135,7 @@ function ProductCard({ product }: { product: Product }) {
                 setTimeout(() => setAdded(false), 1200);
               }}
             >
-              {added ? "Added ✓" : "Add to cart"}
+              {added ? "أُضيف ✓" : "أضف إلى السلة"}
             </Button>
           </div>
         )}
@@ -174,7 +174,6 @@ export default function CatalogPage() {
 
   // /products/popular returns a bare array; /products returns {data, meta}.
   const products = Array.isArray(data) ? data : (data?.data ?? []);
-  const total = Array.isArray(data) ? data.length : data?.meta.total;
 
   function selectQuickFilter(id: QuickFilter) {
     setQuickFilter((current) => (current === id ? null : id));
@@ -192,14 +191,9 @@ export default function CatalogPage() {
     <div className="flex flex-col gap-6">
       {isDefaultView && <HomeBanner />}
 
-      <div>
-        <h1 className="text-xl font-semibold text-ink">Catalog</h1>
-        <p className="text-sm text-muted">{total ?? 0} products available.</p>
-      </div>
-
       <Input
         type="search"
-        placeholder="Search products…"
+        placeholder="ابحث عن المنتجات…"
         value={searchInput}
         onChange={(e) => {
           setSearchInput(e.target.value);
@@ -226,7 +220,7 @@ export default function CatalogPage() {
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
               <PercentIcon />
             </span>
-            <span className="w-16 text-center text-xs text-muted">Promotions</span>
+            <span className="w-16 text-center text-xs text-muted">العروض</span>
           </Link>
         </div>
       )}
@@ -237,14 +231,14 @@ export default function CatalogPage() {
             {SHORTCUTS.find((s) => s.id === quickFilter)?.label}
           </span>
           <button onClick={() => setQuickFilter(null)} className="text-xs text-muted underline">
-            Clear
+            مسح
           </button>
         </div>
       )}
 
       {isDefaultView && !!categories?.length && (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-ink">Categories</span>
+          <span className="text-sm font-medium text-ink">الفئات</span>
           <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
             {categories.map((category, index) => (
               <button
@@ -276,7 +270,7 @@ export default function CatalogPage() {
               categoryId === null ? "border-brand bg-brand text-white" : "border-line bg-paper-raised text-muted",
             )}
           >
-            All
+            الكل
           </button>
           {categories.map((category) => (
             <button
@@ -295,10 +289,10 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted">جارٍ التحميل…</p>}
       {!isLoading && products.length === 0 && (
         <p className="text-sm text-muted">
-          {quickFilter === "popular" ? "No orders yet to rank products by." : "No products match your search."}
+          {quickFilter === "popular" ? "لا توجد طلبات بعد لترتيب المنتجات." : "لا توجد منتجات تطابق بحثك."}
         </p>
       )}
 

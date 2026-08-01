@@ -12,8 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const loginSchema = z.object({
-  phone: z.string().min(6, "Enter your phone number, including the country code."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  phone: z.string().min(6, "أدخل رقم هاتفك مع رمز الدولة."),
+  password: z.string().min(8, "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل."),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -32,7 +32,7 @@ export default function LoginPage() {
     try {
       await login(values.phone, values.password);
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Something went wrong.");
+      setServerError(error instanceof Error ? error.message : "حدث خطأ ما.");
     }
   };
 
@@ -40,16 +40,17 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to order</CardTitle>
-          <p className="mt-1 text-sm text-muted">Order from your distributor, anytime.</p>
+          <CardTitle>سجّل الدخول لطلب المنتجات</CardTitle>
+          <p className="mt-1 text-sm text-muted">اطلب من الموزع الخاص بك في أي وقت.</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="phone">Phone number</Label>
+              <Label htmlFor="phone">رقم الهاتف</Label>
               <Input
                 id="phone"
                 type="tel"
+                dir="ltr"
                 placeholder="+212612345678"
                 autoComplete="username"
                 {...register("phone")}
@@ -58,7 +59,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">كلمة المرور</Label>
               <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
               {errors.password && <p className="text-xs text-critical">{errors.password.message}</p>}
             </div>
@@ -66,13 +67,13 @@ export default function LoginPage() {
             {serverError && <p className="text-sm text-critical">{serverError}</p>}
 
             <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
-              {isSubmitting ? "Signing in…" : "Sign in"}
+              {isSubmitting ? "جارٍ تسجيل الدخول…" : "تسجيل الدخول"}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted">
-            New here?{" "}
+            جديد هنا؟{" "}
             <Link href="/register" className="font-medium text-accent-ink underline">
-              Create an account
+              أنشئ حسابًا
             </Link>
           </p>
         </CardContent>

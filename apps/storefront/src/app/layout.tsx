@@ -40,13 +40,18 @@ const plexMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Wasla — Order online",
-  description: "Order from your distributor online",
+  title: "وصلة — اطلب أونلاين",
+  description: "اطلب من الموزع الخاص بك عبر الإنترنت",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sora.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <html
+      lang="ar"
+      dir="rtl"
+      suppressHydrationWarning
+      className={`${sora.variable} ${plexSans.variable} ${plexMono.variable}`}
+    >
       <body>
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>

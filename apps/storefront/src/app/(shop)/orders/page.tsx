@@ -18,6 +18,19 @@ interface OrderListResponse {
   meta: { total: number };
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "مسودة",
+  PENDING: "قيد الانتظار",
+  CONFIRMED: "مؤكد",
+  PROCESSING: "قيد التجهيز",
+  DELIVERED: "تم التوصيل",
+  CANCELLED: "ملغى",
+};
+
+function statusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status;
+}
+
 function statusColor(status: string) {
   if (status === "DELIVERED" || status === "CONFIRMED") return "text-success bg-success-soft";
   if (status === "CANCELLED") return "text-critical bg-critical/10";
@@ -30,10 +43,10 @@ export default function OrdersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-ink">My orders</h1>
+      <h1 className="text-xl font-semibold text-ink">طلباتي</h1>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {!isLoading && data?.data.length === 0 && <p className="text-sm text-muted">You haven't placed any orders yet.</p>}
+      {isLoading && <p className="text-sm text-muted">جارٍ التحميل…</p>}
+      {!isLoading && data?.data.length === 0 && <p className="text-sm text-muted">لم تقم بإرسال أي طلب بعد.</p>}
 
       <Card>
         {/* Stacked cards on narrow screens — a 4-column table forces sideways
@@ -44,7 +57,7 @@ export default function OrdersPage() {
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-muted">{order.orderNumber}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>
-                  {order.status}
+                  {statusLabel(order.status)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -58,10 +71,10 @@ export default function OrdersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                <th className="px-5 py-3 font-medium">Order</th>
-                <th className="px-5 py-3 font-medium">Date</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium text-right">Total</th>
+                <th className="px-5 py-3 font-medium">الطلب</th>
+                <th className="px-5 py-3 font-medium">التاريخ</th>
+                <th className="px-5 py-3 font-medium">الحالة</th>
+                <th className="px-5 py-3 font-medium text-right">المجموع</th>
               </tr>
             </thead>
             <tbody>
@@ -75,7 +88,7 @@ export default function OrdersPage() {
                   <td className="px-5 py-3 text-muted">{new Date(order.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(order.status)}`}>
-                      {order.status}
+                      {statusLabel(order.status)}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">{order.total}</td>

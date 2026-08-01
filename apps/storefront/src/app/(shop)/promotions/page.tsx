@@ -25,15 +25,15 @@ interface Promotion {
 function summarize(promo: Promotion): string {
   switch (promo.type) {
     case "PERCENTAGE":
-      return `${promo.discountPercent}% off`;
+      return `خصم ${promo.discountPercent}%`;
     case "FIXED_AMOUNT":
-      return `${promo.discountAmount} off`;
+      return `خصم ${promo.discountAmount}`;
     case "VOLUME_DISCOUNT":
-      return `${promo.discountPercent}% off when buying ${promo.minQuantity}+`;
+      return `خصم ${promo.discountPercent}% عند شراء ${promo.minQuantity}+`;
     case "BUY_X_GET_Y":
       return promo.rewardProduct
-        ? `Buy ${promo.buyQuantity}, get ${promo.getQuantity} ${promo.rewardProduct.name} free`
-        : `Buy ${promo.buyQuantity}, get ${promo.getQuantity} free`;
+        ? `اشترِ ${promo.buyQuantity} واحصل على ${promo.getQuantity} ${promo.rewardProduct.name} مجانًا`
+        : `اشترِ ${promo.buyQuantity} واحصل على ${promo.getQuantity} مجانًا`;
     default:
       return promo.type;
   }
@@ -45,13 +45,13 @@ export default function PromotionsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-ink">Promotions</h1>
-        <p className="text-sm text-muted">Deals currently available on your account.</p>
+        <h1 className="text-xl font-semibold text-ink">العروض</h1>
+        <p className="text-sm text-muted">العروض المتاحة حاليًا لحسابك.</p>
       </div>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted">جارٍ التحميل…</p>}
       {!isLoading && promotions?.length === 0 && (
-        <p className="text-sm text-muted">No active promotions right now — check back soon.</p>
+        <p className="text-sm text-muted">لا توجد عروض نشطة حاليًا — تحقق لاحقًا.</p>
       )}
 
       <div className="flex flex-col gap-4">
@@ -69,7 +69,7 @@ export default function PromotionsPage() {
               {promo.description && <p className="text-sm text-muted">{promo.description}</p>}
               {promo.products.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted">Applies to</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted">ينطبق على</span>
                   <div className="flex flex-wrap gap-2">
                     {promo.products.map(({ product }) => (
                       <Link
@@ -84,7 +84,7 @@ export default function PromotionsPage() {
                 </div>
               )}
               {promo.endsAt && (
-                <p className="text-xs text-muted">Ends {new Date(promo.endsAt).toLocaleDateString()}</p>
+                <p className="text-xs text-muted">ينتهي في {new Date(promo.endsAt).toLocaleDateString()}</p>
               )}
             </CardContent>
           </Card>

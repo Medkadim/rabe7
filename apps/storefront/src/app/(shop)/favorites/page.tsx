@@ -34,7 +34,7 @@ function FavoriteRow({ favorite, onRemove }: { favorite: ReturnType<typeof useFa
       </Link>
       <div className="flex items-center gap-3">
         {outOfStock ? (
-          <p className="text-xs font-medium text-critical">Out of stock</p>
+          <p className="text-xs font-medium text-critical">غير متوفر</p>
         ) : (
           <>
             <QuantityStepper value={quantity} onChange={setQuantity} />
@@ -46,7 +46,7 @@ function FavoriteRow({ favorite, onRemove }: { favorite: ReturnType<typeof useFa
                 setTimeout(() => setAdded(false), 1200);
               }}
             >
-              {added ? "Added ✓" : "Add to cart"}
+              {added ? "أُضيف ✓" : "أضف إلى السلة"}
             </Button>
           </>
         )}
@@ -61,17 +61,17 @@ export default function FavoritesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-ink">My favorites</h1>
+      <h1 className="text-xl font-semibold text-ink">مفضلتي</h1>
 
       {error && <p className="text-sm text-critical">{error}</p>}
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted">جارٍ التحميل…</p>}
       {!isLoading && favorites.length === 0 && (
         <p className="text-sm text-muted">
-          No favorites yet.{" "}
+          لا توجد عناصر مفضلة بعد.{" "}
           <Link href="/catalog" className="text-accent-ink underline">
-            Browse the catalog
+            تصفح المنتجات
           </Link>{" "}
-          and tap the heart on a product to save it here.
+          واضغط على أيقونة القلب في أي منتج لحفظه هنا.
         </p>
       )}
 

@@ -55,7 +55,7 @@ export function useFavorites() {
   };
 
   const failure = add.error ?? remove.error ?? listError;
-  const error = failure ? (failure instanceof ApiError ? failure.message : "Could not update favorites.") : null;
+  const error = failure ? (failure instanceof ApiError ? failure.message : "تعذر تحديث المفضلة.") : null;
 
   return { favorites: data ?? [], favoritedIds, isLoading, toggle, error };
 }

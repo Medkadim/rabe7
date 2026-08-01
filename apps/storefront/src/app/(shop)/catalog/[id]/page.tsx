@@ -33,15 +33,15 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
-  if (!product) return <p className="text-sm text-muted">Product not found.</p>;
+  if (isLoading) return <p className="text-sm text-muted">جارٍ التحميل…</p>;
+  if (!product) return <p className="text-sm text-muted">المنتج غير موجود.</p>;
 
   const outOfStock = product.currentStock <= 0;
 
   return (
     <div className="flex flex-col gap-6">
       <Link href="/catalog" className="text-sm text-muted hover:text-ink">
-        ← Back to catalog
+        → العودة إلى المنتجات
       </Link>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -84,7 +84,7 @@ export default function ProductDetailPage() {
                       product.isPromotion ? "bg-critical" : "bg-brand"
                     }`}
                   >
-                    {product.isPromotion ? "Promo" : "Featured"}
+                    {product.isPromotion ? "عرض" : "مميز"}
                   </span>
                 )}
                 <h1 className="text-2xl font-semibold text-ink">{product.name}</h1>
@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
               />
             </div>
             <p className="text-sm text-muted">
-              {product.sku} · per {product.unit}
+              {product.sku} · {product.unit}
               {product.category && ` · ${product.category.name}`}
             </p>
             {favoriteError && <p className="mt-1 text-xs text-critical">{favoriteError}</p>}
@@ -107,7 +107,7 @@ export default function ProductDetailPage() {
           {product.description && <p className="whitespace-pre-line text-sm text-muted">{product.description}</p>}
 
           {outOfStock ? (
-            <p className="text-sm font-medium text-critical">Out of stock</p>
+            <p className="text-sm font-medium text-critical">غير متوفر</p>
           ) : (
             <div className="flex items-center gap-3">
               <QuantityStepper value={quantity} onChange={setQuantity} />
@@ -118,7 +118,7 @@ export default function ProductDetailPage() {
                   setTimeout(() => setAdded(false), 1200);
                 }}
               >
-                {added ? "Added ✓" : "Add to cart"}
+                {added ? "أُضيف ✓" : "أضف إلى السلة"}
               </Button>
             </div>
           )}

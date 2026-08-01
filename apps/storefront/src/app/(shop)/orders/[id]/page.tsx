@@ -49,6 +49,15 @@ const STATUS_STYLE: Record<string, string> = {
   CANCELLED: "text-critical bg-critical/10",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "مسودة",
+  PENDING: "قيد الانتظار",
+  CONFIRMED: "مؤكد",
+  PROCESSING: "قيد التجهيز",
+  DELIVERED: "تم التوصيل",
+  CANCELLED: "ملغى",
+};
+
 // The order the statuses normally progress through — used to render the
 // timeline so a customer sees where their order is, not just a status word.
 const STATUS_SEQUENCE = ["DRAFT", "PENDING", "CONFIRMED", "PROCESSING", "DELIVERED"];
@@ -71,8 +80,8 @@ export default function OrderDetailPage() {
     },
   });
 
-  if (isLoading) return <p className="text-sm text-muted">Loading…</p>;
-  if (!order) return <p className="text-sm text-muted">Order not found.</p>;
+  if (isLoading) return <p className="text-sm text-muted">جارٍ التحميل…</p>;
+  if (!order) return <p className="text-sm text-muted">الطلب غير موجود.</p>;
 
   const canCancel = hasPermission("orders.cancel") && order.status !== "DELIVERED" && order.status !== "CANCELLED";
   const currentStep = STATUS_SEQUENCE.indexOf(order.status);
@@ -82,18 +91,18 @@ export default function OrderDetailPage() {
     <div className="flex flex-col gap-6">
       <div>
         <Link href="/orders" className="text-sm text-muted hover:text-ink">
-          ← Back to my orders
+          → العودة إلى طلباتي
         </Link>
         <div className="mt-1 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-ink">{order.orderNumber}</h1>
             <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[order.status] ?? ""}`}>
-              {order.status}
+              {STATUS_LABELS[order.status] ?? order.status}
             </span>
           </div>
           {canCancel && (
             <Button variant="destructive" onClick={() => cancelOrder.mutate()} disabled={cancelOrder.isPending}>
-              {cancelOrder.isPending ? "Cancelling…" : "Cancel order"}
+              {cancelOrder.isPending ? "جارٍ الإلغاء…" : "إلغاء الطلب"}
             </Button>
           )}
         </div>
@@ -101,7 +110,7 @@ export default function OrderDetailPage() {
 
       {cancelOrder.isError && (
         <p className="text-sm text-critical">
-          {cancelOrder.error instanceof ApiError ? cancelOrder.error.message : "Could not cancel the order."}
+          {cancelOrder.error instanceof ApiError ? cancelOrder.error.message : "تعذر إلغاء الطلب."}
         </p>
       )}
 
@@ -122,7 +131,7 @@ export default function OrderDetailPage() {
                         {reached ? "✓" : ""}
                       </div>
                       <span className={`whitespace-nowrap text-xs ${reached ? "font-medium text-ink" : "text-muted"}`}>
-                        {step}
+                        {STATUS_LABELS[step] ?? step}
                       </span>
                     </div>
                     {index < STATUS_SEQUENCE.length - 1 && (
@@ -138,16 +147,16 @@ export default function OrderDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Line items</CardTitle>
+          <CardTitle>عناصر الطلب</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                <th className="px-5 py-2 font-medium">Product</th>
-                <th className="px-5 py-2 font-medium text-right">Qty</th>
-                <th className="px-5 py-2 font-medium text-right">Unit price</th>
-                <th className="px-5 py-2 font-medium text-right">Line total</th>
+                <th className="px-5 py-2 font-medium">المنتج</th>
+                <th className="px-5 py-2 font-medium text-right">الكمية</th>
+                <th className="px-5 py-2 font-medium text-right">سعر الوحدة</th>
+                <th className="px-5 py-2 font-medium text-right">المجموع</th>
               </tr>
             </thead>
             <tbody>
@@ -168,19 +177,19 @@ export default function OrderDetailPage() {
           </table>
           <div className="flex flex-col gap-1 border-t border-line p-5 text-sm">
             <div className="flex justify-between text-muted">
-              <span>Subtotal</span>
+              <span>المجموع الفرعي</span>
               <span className="tabular-nums">{order.subtotal}</span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Discount</span>
+              <span>الخصم</span>
               <span className="tabular-nums">-{order.discountTotal}</span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Tax</span>
+              <span>الضريبة</span>
               <span className="tabular-nums">{order.taxTotal}</span>
             </div>
             <div className="flex justify-between text-base font-semibold text-ink">
-              <span>Total</span>
+              <span>المجموع</span>
               <span className="tabular-nums">{order.total}</span>
             </div>
           </div>
@@ -190,7 +199,7 @@ export default function OrderDetailPage() {
       {order.notes && (
         <Card>
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>ملاحظات</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-ink">{order.notes}</CardContent>
         </Card>

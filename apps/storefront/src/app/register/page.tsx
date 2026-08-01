@@ -12,15 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const registerSchema = z.object({
-  businessName: z.string().min(1, "Required"),
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
-  phone: z.string().min(6, "Enter your phone number, including the country code."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  email: z.union([z.string().email("Enter a valid email address."), z.literal("")]).optional(),
-  addressLine1: z.string().min(1, "Required"),
-  addressCity: z.string().min(1, "Required"),
-  addressCountry: z.string().min(1, "Required"),
+  businessName: z.string().min(1, "هذا الحقل مطلوب"),
+  firstName: z.string().min(1, "هذا الحقل مطلوب"),
+  lastName: z.string().min(1, "هذا الحقل مطلوب"),
+  phone: z.string().min(6, "أدخل رقم هاتفك مع رمز الدولة."),
+  password: z.string().min(8, "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل."),
+  email: z.union([z.string().email("أدخل بريدًا إلكترونيًا صالحًا."), z.literal("")]).optional(),
+  addressLine1: z.string().min(1, "هذا الحقل مطلوب"),
+  addressCity: z.string().min(1, "هذا الحقل مطلوب"),
+  addressCountry: z.string().min(1, "هذا الحقل مطلوب"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -45,14 +45,14 @@ export default function RegisterPage() {
         password: values.password,
         email: values.email || undefined,
         address: {
-          label: "Shop",
+          label: "المتجر",
           line1: values.addressLine1,
           city: values.addressCity,
           country: values.addressCountry,
         },
       });
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Something went wrong.");
+      setServerError(error instanceof Error ? error.message : "حدث خطأ ما.");
     }
   };
 
@@ -60,60 +60,67 @@ export default function RegisterPage() {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>Create your account</CardTitle>
+          <CardTitle>أنشئ حسابك</CardTitle>
           <p className="mt-1 text-sm text-muted">
-            Sign up to order online. Your account needs a quick approval before you can place your first order —
-            we'll let you know as soon as it's ready.
+            سجّل للطلب عبر الإنترنت. يحتاج حسابك إلى موافقة سريعة قبل أن تتمكن من إرسال أول طلب — سنُعلمك بمجرد أن
+            يصبح جاهزًا.
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
             <div className="col-span-2 flex flex-col gap-1.5">
-              <Label htmlFor="businessName">Shop / business name</Label>
-              <Input id="businessName" placeholder="Kadim Store" {...register("businessName")} />
+              <Label htmlFor="businessName">اسم المتجر / النشاط التجاري</Label>
+              <Input id="businessName" placeholder="متجر قديم" {...register("businessName")} />
               {errors.businessName && <p className="text-xs text-critical">{errors.businessName.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="firstName">First name</Label>
+              <Label htmlFor="firstName">الاسم الأول</Label>
               <Input id="firstName" {...register("firstName")} />
               {errors.firstName && <p className="text-xs text-critical">{errors.firstName.message}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lastName">Last name</Label>
+              <Label htmlFor="lastName">اسم العائلة</Label>
               <Input id="lastName" {...register("lastName")} />
               {errors.lastName && <p className="text-xs text-critical">{errors.lastName.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="phone">Phone number</Label>
-              <Input id="phone" type="tel" placeholder="+212612345678" autoComplete="username" {...register("phone")} />
+              <Label htmlFor="phone">رقم الهاتف</Label>
+              <Input
+                id="phone"
+                type="tel"
+                dir="ltr"
+                placeholder="+212612345678"
+                autoComplete="username"
+                {...register("phone")}
+              />
               {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">كلمة المرور</Label>
               <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
               {errors.password && <p className="text-xs text-critical">{errors.password.message}</p>}
             </div>
 
             <div className="col-span-2 flex flex-col gap-1.5">
-              <Label htmlFor="email">Email (optional)</Label>
+              <Label htmlFor="email">البريد الإلكتروني (اختياري)</Label>
               <Input id="email" type="email" {...register("email")} />
               {errors.email && <p className="text-xs text-critical">{errors.email.message}</p>}
             </div>
 
             <div className="col-span-2 flex flex-col gap-1.5">
-              <Label htmlFor="addressLine1">Delivery address</Label>
-              <Input id="addressLine1" placeholder="Street address" {...register("addressLine1")} />
+              <Label htmlFor="addressLine1">عنوان التوصيل</Label>
+              <Input id="addressLine1" placeholder="عنوان الشارع" {...register("addressLine1")} />
               {errors.addressLine1 && <p className="text-xs text-critical">{errors.addressLine1.message}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="addressCity">City</Label>
+              <Label htmlFor="addressCity">المدينة</Label>
               <Input id="addressCity" {...register("addressCity")} />
               {errors.addressCity && <p className="text-xs text-critical">{errors.addressCity.message}</p>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="addressCountry">Country</Label>
+              <Label htmlFor="addressCountry">الدولة</Label>
               <Input id="addressCountry" {...register("addressCountry")} />
               {errors.addressCountry && <p className="text-xs text-critical">{errors.addressCountry.message}</p>}
             </div>
@@ -122,14 +129,14 @@ export default function RegisterPage() {
 
             <div className="col-span-2">
               <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Creating account…" : "Create account"}
+                {isSubmitting ? "جارٍ إنشاء الحساب…" : "إنشاء حساب"}
               </Button>
             </div>
           </form>
           <p className="mt-4 text-center text-sm text-muted">
-            Already have an account?{" "}
+            لديك حساب بالفعل؟{" "}
             <Link href="/login" className="font-medium text-accent-ink underline">
-              Sign in
+              سجّل الدخول
             </Link>
           </p>
         </CardContent>

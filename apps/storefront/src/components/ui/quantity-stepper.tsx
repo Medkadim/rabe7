@@ -23,7 +23,7 @@ export function QuantityStepper({ value, onChange, min = 1, className }: Quantit
         type="button"
         onClick={decrement}
         disabled={value <= min}
-        aria-label="Decrease quantity"
+        aria-label="إنقاص الكمية"
         className="flex w-9 shrink-0 items-center justify-center text-ink hover:bg-accent-soft disabled:pointer-events-none disabled:opacity-40"
       >
         −
@@ -34,7 +34,7 @@ export function QuantityStepper({ value, onChange, min = 1, className }: Quantit
       <button
         type="button"
         onClick={increment}
-        aria-label="Increase quantity"
+        aria-label="زيادة الكمية"
         className="flex w-9 shrink-0 items-center justify-center text-ink hover:bg-accent-soft"
       >
         +
