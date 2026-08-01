@@ -10,12 +10,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.use(helmet());
-  // Two separate browser apps call this API with cookies/credentials — the
-  // staff admin dashboard and the customer-facing storefront — so both
-  // origins need to be allowed explicitly (a wildcard can't be combined
-  // with credentials: true per the CORS spec).
+  // Three separate browser apps call this API with cookies/credentials — the
+  // staff admin dashboard, the customer-facing storefront, and the driver
+  // app — so every origin needs to be allowed explicitly (a wildcard can't
+  // be combined with credentials: true per the CORS spec).
   app.enableCors({
-    origin: [process.env.ADMIN_URL ?? "http://localhost:3000", process.env.STOREFRONT_URL ?? "http://localhost:3001"],
+    origin: [
+      process.env.ADMIN_URL ?? "http://localhost:3000",
+      process.env.STOREFRONT_URL ?? "http://localhost:3001",
+      process.env.DRIVER_URL ?? "http://localhost:3002",
+    ],
     credentials: true,
   });
 

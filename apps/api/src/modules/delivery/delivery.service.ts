@@ -46,6 +46,30 @@ export class DeliveryService {
     return paginate(data, total, query);
   }
 
+  // What a driver sees when they open the app — only their own routes, not
+  // the tenant-wide list listRoutes()/findRoute() serve to admin. Stops
+  // include the customer's default address so the app can show an
+  // itinerary and link out to a maps app without a second request.
+  async listMyRoutes(tenantId: string, driverUserId: string) {
+    return this.prisma.deliveryRoute.findMany({
+      where: { tenantId, driverUserId },
+      orderBy: { scheduledDate: "desc" },
+      include: {
+        deliveries: {
+          orderBy: { sequence: "asc" },
+          include: {
+            order: {
+              include: {
+                customer: { include: { addresses: true } },
+                items: { include: { product: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async findRoute(tenantId: string, id: string) {
     const route = await this.prisma.deliveryRoute.findFirst({
       where: { id, tenantId },
@@ -98,10 +122,23 @@ export class DeliveryService {
     return paginate(data, total, query);
   }
 
+  // A driver needs to see what's actually in the order (to load the right
+  // items) and where it's going (a delivery address) — the admin-facing
+  // list/route queries above don't need either, so this is its own include
+  // rather than something every read pays for.
   async findOne(tenantId: string, id: string) {
     const delivery = await this.prisma.delivery.findFirst({
       where: { id, tenantId },
-      include: { order: { include: { customer: true, invoice: true } }, route: true },
+      include: {
+        order: {
+          include: {
+            customer: { include: { addresses: true } },
+            invoice: true,
+            items: { include: { product: true } },
+          },
+        },
+        route: true,
+      },
     });
     if (!delivery) throw new NotFoundException("Delivery not found.");
     return delivery;

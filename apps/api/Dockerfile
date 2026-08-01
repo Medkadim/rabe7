@@ -40,6 +40,15 @@ COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/prisma ./prisma
 COPY --from=build /repo/node_modules /repo/node_modules
 COPY --from=build /repo/apps/api/node_modules ./node_modules
+# PDFs (delivery slips, loading manifests) are rendered by printing an HTML
+# page through a real headless browser instead of a PDF-drawing library —
+# the only reliable way to get correct Arabic text shaping. --with-deps
+# pulls in the OS libraries Chromium needs on Debian; fonts-noto-core adds
+# real Arabic glyph coverage rather than relying on whatever fallback font
+# happens to be present.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-core \
+  && rm -rf /var/lib/apt/lists/* \
+  && npx playwright install --with-deps chromium
 # `prisma db seed` runs prisma/seed.ts through ts-node (not the compiled
 # dist/), and seed.ts imports the permission list straight from source
 # (../src/common/constants/permissions) — so ts-node needs the real

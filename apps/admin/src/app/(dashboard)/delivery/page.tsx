@@ -41,12 +41,31 @@ interface Order {
 interface OrderListResponse {
   data: Order[];
 }
+interface Driver {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
 
 const createRouteSchema = z.object({
   name: z.string().min(1, "Required"),
   scheduledDate: z.string().min(1, "Required"),
+  driverUserId: z.string().optional(),
 });
 type CreateRouteForm = z.infer<typeof createRouteSchema>;
+
+// Shared by the per-route and global-recap buttons — both hit a PDF
+// endpoint directly (not through apiFetch, which assumes JSON) and open
+// the result in a new tab the same way the order PDF download already does.
+async function downloadPdf(url: string, accessToken: string | null) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}${url}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Could not generate the PDF.");
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, "_blank");
+}
 
 const DELIVERY_STATUS_STYLE: Record<string, string> = {
   PENDING: "text-muted bg-line/40",
@@ -161,8 +180,12 @@ export default function DeliveryPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [recapDate, setRecapDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [recapError, setRecapError] = useState<string | null>(null);
+  const [slipError, setSlipError] = useState<string | null>(null);
 
   const { data, isLoading } = useApiQuery<RouteListResponse>(["delivery", "routes"], "/delivery/routes?pageSize=20");
+  const { data: drivers } = useApiQuery<Driver[]>(["staff", "drivers"], "/staff?role=DELIVERY_DRIVER");
 
   const {
     register,
@@ -175,7 +198,11 @@ export default function DeliveryPage() {
     mutationFn: (values: CreateRouteForm) =>
       apiFetch("/delivery/routes", accessToken, {
         method: "POST",
-        body: JSON.stringify({ ...values, scheduledDate: new Date(values.scheduledDate).toISOString() }),
+        body: JSON.stringify({
+          ...values,
+          driverUserId: values.driverUserId || undefined,
+          scheduledDate: new Date(values.scheduledDate).toISOString(),
+        }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["delivery"] });
@@ -196,6 +223,44 @@ export default function DeliveryPage() {
         {canManage && <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New route"}</Button>}
       </div>
 
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Global loading recap</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted">
+              Every product needed across every driver&apos;s route for one day — one prep sheet for the whole
+              warehouse instead of one per driver.
+            </p>
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="recapDate">Date</Label>
+                <Input
+                  id="recapDate"
+                  type="date"
+                  value={recapDate}
+                  onChange={(e) => setRecapDate(e.target.value)}
+                  className="w-48"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRecapError(null);
+                  downloadPdf(`/delivery/loading-slip?date=${recapDate}`, accessToken).catch(() =>
+                    setRecapError("Could not generate the recap."),
+                  );
+                }}
+              >
+                Download global recap
+              </Button>
+            </div>
+            {recapError && <p className="text-sm text-critical">{recapError}</p>}
+          </CardContent>
+        </Card>
+      )}
+
       {showForm && (
         <Card>
           <CardHeader>
@@ -212,6 +277,17 @@ export default function DeliveryPage() {
                 <Label htmlFor="scheduledDate">Date</Label>
                 <Input id="scheduledDate" type="date" {...register("scheduledDate")} />
                 {errors.scheduledDate && <p className="text-xs text-critical">{errors.scheduledDate.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="driverUserId">Driver (optional)</Label>
+                <Select id="driverUserId" {...register("driverUserId")}>
+                  <option value="">Not assigned yet</option>
+                  {drivers?.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.firstName} {driver.lastName}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="col-span-2 flex items-center gap-3">
                 <Button type="submit" disabled={isSubmitting}>
@@ -242,6 +318,20 @@ export default function DeliveryPage() {
                   {route.driver ? ` · ${route.driver.firstName} ${route.driver.lastName}` : ""}
                 </p>
               </div>
+              {canManage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSlipError(null);
+                    downloadPdf(`/delivery/routes/${route.id}/loading-slip`, accessToken).catch(() =>
+                      setSlipError(`Could not generate the loading slip for ${route.name}.`),
+                    );
+                  }}
+                >
+                  Loading slip
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {route.deliveries.length === 0 && <p className="text-sm text-muted">No stops on this route yet.</p>}
@@ -253,6 +343,7 @@ export default function DeliveryPage() {
           </Card>
         ))}
       </div>
+      {slipError && <p className="text-sm text-critical">{slipError}</p>}
     </div>
   );
 }

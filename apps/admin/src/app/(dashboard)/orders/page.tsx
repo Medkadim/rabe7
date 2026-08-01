@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -71,6 +72,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -151,9 +153,14 @@ export default function OrdersPage() {
           <h1 className="text-xl font-semibold text-ink">Orders</h1>
           <p className="text-sm text-muted">{data?.meta.total ?? 0} orders placed.</p>
         </div>
-        {canCreate && (
-          <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New order"}</Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => router.push("/delivery")}>
+            Loading slips
+          </Button>
+          {canCreate && (
+            <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "New order"}</Button>
+          )}
+        </div>
       </div>
 
       {showForm && (

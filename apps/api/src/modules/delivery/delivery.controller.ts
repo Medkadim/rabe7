@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Response } from "express";
 import { DeliveryService } from "./delivery.service";
+import { DeliveryPdfService } from "./delivery-pdf.service";
 import { CreateRouteDto } from "./dto/create-route.dto";
 import { AssignOrderDto } from "./dto/assign-order.dto";
 import { UpdateDeliveryStatusDto } from "./dto/update-delivery-status.dto";
@@ -15,7 +17,10 @@ import { PERMISSIONS } from "../../common/constants/permissions";
 @ApiBearerAuth()
 @Controller({ path: "delivery", version: "1" })
 export class DeliveryController {
-  constructor(private readonly deliveryService: DeliveryService) {}
+  constructor(
+    private readonly deliveryService: DeliveryService,
+    private readonly deliveryPdfService: DeliveryPdfService,
+  ) {}
 
   @Post("routes")
   @RequirePermissions(PERMISSIONS.DELIVERY_ROUTES_MANAGE)
@@ -31,6 +36,13 @@ export class DeliveryController {
     return this.deliveryService.listRoutes(user.tenantId, query);
   }
 
+  @Get("my-routes")
+  @RequirePermissions(PERMISSIONS.DELIVERY_READ)
+  @ApiOperation({ summary: "List the current driver's own routes and stops" })
+  listMyRoutes(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryService.listMyRoutes(user.tenantId, user.userId);
+  }
+
   @Get("routes/:id")
   @RequirePermissions(PERMISSIONS.DELIVERY_READ)
   @ApiOperation({ summary: "Get a route and its stops" })
@@ -43,6 +55,35 @@ export class DeliveryController {
   @ApiOperation({ summary: "Assign an order to a route as a delivery stop" })
   assignOrder(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() dto: AssignOrderDto) {
     return this.deliveryService.assignOrder(user.tenantId, id, dto);
+  }
+
+  @Get("routes/:id/loading-slip")
+  @RequirePermissions(PERMISSIONS.DELIVERY_ROUTES_MANAGE)
+  @ApiOperation({ summary: "Download the loading slip (bon de chargement) for one route/driver as a PDF" })
+  async downloadRouteLoadingSlip(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ) {
+    const pdf = await this.deliveryPdfService.renderRouteLoadingSlip(user.tenantId, id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="loading-slip-${id}.pdf"`);
+    res.send(pdf);
+  }
+
+  @Get("loading-slip")
+  @RequirePermissions(PERMISSIONS.DELIVERY_ROUTES_MANAGE)
+  @ApiOperation({ summary: "Download the global loading recap for a day, across every route/driver, as a PDF" })
+  async downloadGlobalRecap(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query("date") date: string | undefined,
+    @Res() res: Response,
+  ) {
+    const target = date ? new Date(date) : new Date();
+    const pdf = await this.deliveryPdfService.renderGlobalRecap(user.tenantId, target);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="loading-recap.pdf"`);
+    res.send(pdf);
   }
 
   @Get("deliveries")

@@ -5,9 +5,10 @@ import { OrderPdfService } from "./order-pdf.service";
 import { ProductsModule } from "../products/products.module";
 import { CustomersModule } from "../customers/customers.module";
 import { PromotionsModule } from "../promotions/promotions.module";
+import { PdfModule } from "../../common/pdf/pdf.module";
 
 @Module({
-  imports: [ProductsModule, CustomersModule, PromotionsModule],
+  imports: [ProductsModule, CustomersModule, PromotionsModule, PdfModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderPdfService],
   exports: [OrdersService],

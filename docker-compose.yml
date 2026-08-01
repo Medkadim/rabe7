@@ -107,6 +107,24 @@ services:
     depends_on:
       - api
 
+  driver:
+    build:
+      context: .
+      dockerfile: apps/driver/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the driver app's server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
