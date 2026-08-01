@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Card } from "@/components/ui/card";
+import { formatPrice } from "@/lib/utils";
 
 interface Order {
   id: string;
@@ -62,7 +63,7 @@ export default function OrdersPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted">{new Date(order.createdAt).toLocaleDateString()}</span>
-                <span className="font-medium tabular-nums text-ink">{order.total}</span>
+                <span className="font-medium tabular-nums text-ink">{formatPrice(order.total)}</span>
               </div>
             </Link>
           ))}
@@ -91,7 +92,7 @@ export default function OrdersPage() {
                       {statusLabel(order.status)}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums">{order.total}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">{formatPrice(order.total)}</td>
                 </tr>
               ))}
             </tbody>

@@ -5,7 +5,7 @@ export class LoginDto {
   // Staff sign in with email, customers with phone — this one field takes
   // either, and AuthService.login tries both. Not validated as email/phone
   // specifically since it has to accept both shapes.
-  @ApiProperty({ example: "manager@distributor.com or +212612345678" })
+  @ApiProperty({ example: "manager@distributor.com or 0612345678" })
   @IsString()
   @IsNotEmpty()
   identifier!: string;

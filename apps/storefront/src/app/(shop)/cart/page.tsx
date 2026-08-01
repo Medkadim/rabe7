@@ -10,6 +10,7 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { Card } from "@/components/ui/card";
+import { formatPrice } from "@/lib/utils";
 
 interface Order {
   id: string;
@@ -63,12 +64,12 @@ export default function CartPage() {
               <div key={item.productId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex-1">
                   <p className="font-medium text-ink">{item.name}</p>
-                  <p className="text-xs text-muted">{item.unitPrice} للوحدة</p>
+                  <p className="text-xs text-muted">{formatPrice(item.unitPrice)} للوحدة</p>
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4">
                   <QuantityStepper value={item.quantity} onChange={(qty) => updateQuantity(item.productId, qty)} />
                   <p className="flex-1 text-right font-medium text-ink sm:w-24 sm:flex-none">
-                    {(item.unitPrice * item.quantity).toFixed(2)}
+                    {formatPrice(item.unitPrice * item.quantity)}
                   </p>
                   <Button variant="ghost" size="sm" onClick={() => removeItem(item.productId)}>
                     إزالة
@@ -79,7 +80,7 @@ export default function CartPage() {
           </div>
           <div className="flex items-center justify-between border-t border-line p-4">
             <span className="text-sm text-muted">المجموع</span>
-            <span className="text-lg font-semibold text-ink">{total.toFixed(2)}</span>
+            <span className="text-lg font-semibold text-ink">{formatPrice(total)}</span>
           </div>
         </Card>
       )}

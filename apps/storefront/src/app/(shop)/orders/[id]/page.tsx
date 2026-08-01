@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPrice } from "@/lib/utils";
 
 interface OrderItem {
   id: string;
@@ -164,13 +165,12 @@ export default function OrderDetailPage() {
                 <tr key={item.id} className="border-b border-line last:border-0">
                   <td className="px-5 py-3">
                     <p className="font-medium text-ink">{item.product.name}</p>
-                    <p className="text-xs text-muted">{item.product.sku}</p>
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">
                     {item.quantity} {item.product.unit}
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums">{item.unitPrice}</td>
-                  <td className="px-5 py-3 text-right font-medium tabular-nums">{item.lineTotal}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">{formatPrice(item.unitPrice)}</td>
+                  <td className="px-5 py-3 text-right font-medium tabular-nums">{formatPrice(item.lineTotal)}</td>
                 </tr>
               ))}
             </tbody>
@@ -178,19 +178,19 @@ export default function OrderDetailPage() {
           <div className="flex flex-col gap-1 border-t border-line p-5 text-sm">
             <div className="flex justify-between text-muted">
               <span>المجموع الفرعي</span>
-              <span className="tabular-nums">{order.subtotal}</span>
+              <span className="tabular-nums">{formatPrice(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>الخصم</span>
-              <span className="tabular-nums">-{order.discountTotal}</span>
+              <span className="tabular-nums">-{formatPrice(order.discountTotal)}</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>الضريبة</span>
-              <span className="tabular-nums">{order.taxTotal}</span>
+              <span className="tabular-nums">{formatPrice(order.taxTotal)}</span>
             </div>
             <div className="flex justify-between text-base font-semibold text-ink">
               <span>المجموع</span>
-              <span className="tabular-nums">{order.total}</span>
+              <span className="tabular-nums">{formatPrice(order.total)}</span>
             </div>
           </div>
         </CardContent>

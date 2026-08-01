@@ -9,6 +9,7 @@ import { useFavorites } from "@/lib/use-favorites";
 import { Button } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { formatPrice } from "@/lib/utils";
 
 interface ProductDetail {
   id: string;
@@ -96,13 +97,13 @@ export default function ProductDetailPage() {
               />
             </div>
             <p className="text-sm text-muted">
-              {product.sku} · {product.unit}
+              {product.unit}
               {product.category && ` · ${product.category.name}`}
             </p>
             {favoriteError && <p className="mt-1 text-xs text-critical">{favoriteError}</p>}
           </div>
 
-          <p className="text-3xl font-semibold text-ink">{product.basePrice}</p>
+          <p className="text-3xl font-semibold text-ink">{formatPrice(product.basePrice)}</p>
 
           {product.description && <p className="whitespace-pre-line text-sm text-muted">{product.description}</p>}
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPrice } from "@/lib/utils";
 
 interface Promotion {
   id: string;
@@ -27,7 +28,7 @@ function summarize(promo: Promotion): string {
     case "PERCENTAGE":
       return `خصم ${promo.discountPercent}%`;
     case "FIXED_AMOUNT":
-      return `خصم ${promo.discountAmount}`;
+      return `خصم ${formatPrice(promo.discountAmount ?? 0)}`;
     case "VOLUME_DISCOUNT":
       return `خصم ${promo.discountPercent}% عند شراء ${promo.minQuantity}+`;
     case "BUY_X_GET_Y":

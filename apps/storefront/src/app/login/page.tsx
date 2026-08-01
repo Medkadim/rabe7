@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const loginSchema = z.object({
-  phone: z.string().min(6, "أدخل رقم هاتفك مع رمز الدولة."),
+  phone: z.string().min(6, "أدخل رقم هاتف صحيح."),
   password: z.string().min(8, "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل."),
 });
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
                 id="phone"
                 type="tel"
                 dir="ltr"
-                placeholder="+212612345678"
+                placeholder="0612345678"
                 autoComplete="username"
                 {...register("phone")}
               />

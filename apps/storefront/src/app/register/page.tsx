@@ -15,13 +15,16 @@ const registerSchema = z.object({
   businessName: z.string().min(1, "هذا الحقل مطلوب"),
   firstName: z.string().min(1, "هذا الحقل مطلوب"),
   lastName: z.string().min(1, "هذا الحقل مطلوب"),
-  phone: z.string().min(6, "أدخل رقم هاتفك مع رمز الدولة."),
+  phone: z.string().min(6, "أدخل رقم هاتف صحيح."),
   password: z.string().min(8, "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل."),
   email: z.union([z.string().email("أدخل بريدًا إلكترونيًا صالحًا."), z.literal("")]).optional(),
   addressLine1: z.string().min(1, "هذا الحقل مطلوب"),
   addressCity: z.string().min(1, "هذا الحقل مطلوب"),
-  addressCountry: z.string().min(1, "هذا الحقل مطلوب"),
 });
+
+// Single-market business — every address is in Morocco, so there's no
+// reason to ask for a country the customer would just retype every time.
+const CUSTOMER_COUNTRY = "المغرب";
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -48,7 +51,7 @@ export default function RegisterPage() {
           label: "المتجر",
           line1: values.addressLine1,
           city: values.addressCity,
-          country: values.addressCountry,
+          country: CUSTOMER_COUNTRY,
         },
       });
     } catch (error) {
@@ -91,7 +94,7 @@ export default function RegisterPage() {
                 id="phone"
                 type="tel"
                 dir="ltr"
-                placeholder="+212612345678"
+                placeholder="0612345678"
                 autoComplete="username"
                 {...register("phone")}
               />
@@ -114,15 +117,10 @@ export default function RegisterPage() {
               <Input id="addressLine1" placeholder="عنوان الشارع" {...register("addressLine1")} />
               {errors.addressLine1 && <p className="text-xs text-critical">{errors.addressLine1.message}</p>}
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="col-span-2 flex flex-col gap-1.5">
               <Label htmlFor="addressCity">المدينة</Label>
               <Input id="addressCity" {...register("addressCity")} />
               {errors.addressCity && <p className="text-xs text-critical">{errors.addressCity.message}</p>}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="addressCountry">الدولة</Label>
-              <Input id="addressCountry" {...register("addressCountry")} />
-              {errors.addressCountry && <p className="text-xs text-critical">{errors.addressCountry.message}</p>}
             </div>
 
             {serverError && <p className="col-span-2 text-sm text-critical">{serverError}</p>}

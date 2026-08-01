@@ -154,7 +154,7 @@ export class AuthService {
     // later matched against at login) is always the one canonical form.
     const normalizedPhone = normalizePhone(dto.phone);
     if (!normalizedPhone) {
-      throw new BadRequestException("Enter a valid phone number, including the country code (e.g. +212612345678).");
+      throw new BadRequestException("Enter a valid Moroccan phone number (e.g. 0612345678).");
     }
 
     const existing = await this.prisma.user.findFirst({

@@ -11,7 +11,7 @@ import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { Card } from "@/components/ui/card";
 import { HomeBanner } from "@/components/home-banner";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 interface Product {
   id: string;
@@ -115,11 +115,9 @@ function ProductCard({ product }: { product: Product }) {
       <div className="flex flex-1 flex-col gap-2 p-4">
         <Link href={`/catalog/${product.id}`}>
           <p className="font-medium text-ink hover:underline">{product.name}</p>
-          <p className="text-xs text-muted">
-            {product.sku} · {product.unit}
-          </p>
+          <p className="text-xs text-muted">{product.unit}</p>
         </Link>
-        <p className="text-lg font-semibold text-ink">{product.basePrice}</p>
+        <p className="text-lg font-semibold text-ink">{formatPrice(product.basePrice)}</p>
         {favoriteError && <p className="text-xs text-critical">{favoriteError}</p>}
         {outOfStock ? (
           <p className="mt-auto text-xs font-medium text-critical">غير متوفر</p>

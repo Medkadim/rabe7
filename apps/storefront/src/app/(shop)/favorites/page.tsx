@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { Card } from "@/components/ui/card";
+import { formatPrice } from "@/lib/utils";
 
 function FavoriteRow({ favorite, onRemove }: { favorite: ReturnType<typeof useFavorites>["favorites"][number]; onRemove: () => void }) {
   const { addItem } = useCart();
@@ -27,9 +28,7 @@ function FavoriteRow({ favorite, onRemove }: { favorite: ReturnType<typeof useFa
         )}
         <div>
           <p className="font-medium text-ink hover:underline">{product.name}</p>
-          <p className="text-xs text-muted">
-            {product.sku} · {product.basePrice}
-          </p>
+          <p className="text-xs text-muted">{formatPrice(product.basePrice)}</p>
         </div>
       </Link>
       <div className="flex items-center gap-3">

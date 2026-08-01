@@ -18,8 +18,10 @@ export class RegisterCustomerDto {
 
   // The only required identifier — matches how customers actually sign up
   // in this market (a phone number, not necessarily an email address).
-  @ApiProperty({ example: "+212612345678", description: "Include the country code" })
-  @IsPhoneNumber(undefined, { message: "Enter a valid phone number, including the country code (e.g. +212612345678)." })
+  // "MA": this only operates in Morocco today, so a local number like
+  // "0612345678" is accepted without a country code.
+  @ApiProperty({ example: "0612345678", description: "Moroccan phone number" })
+  @IsPhoneNumber("MA", { message: "Enter a valid Moroccan phone number (e.g. 0612345678)." })
   phone!: string;
 
   @ApiProperty({ example: "correct-horse-battery-staple" })
