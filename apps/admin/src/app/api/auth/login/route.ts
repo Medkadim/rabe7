@@ -19,7 +19,10 @@ export async function POST(request: NextRequest) {
   const backendResponse = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    // audience is set here, server-side, not read from the request body —
+    // a browser posting to this route can't claim to be a different app to
+    // get past the API's per-app role check.
+    body: JSON.stringify({ ...body, audience: "admin" }),
   });
 
   const data = await backendResponse.json();

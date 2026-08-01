@@ -20,6 +20,22 @@ import { parseDurationToMs } from "../../common/utils/duration.util";
 import { AuthenticatedUser } from "./types/authenticated-user.type";
 import { PermissionCode } from "../../common/constants/permissions";
 import { SystemRoleCode } from "@prisma/client";
+import { LoginAudience } from "./dto/login.dto";
+
+// Which system roles may sign in through which app. This is the actual
+// security boundary between the three frontends — a driver or a retailer
+// authenticating successfully must still be refused a session in the admin
+// app, and vice versa, even though all three call the same /auth/login.
+const AUDIENCE_ROLES: Record<LoginAudience, SystemRoleCode[]> = {
+  admin: [
+    SystemRoleCode.SUPER_ADMIN,
+    SystemRoleCode.DISTRIBUTOR_MANAGER,
+    SystemRoleCode.SALES_REPRESENTATIVE,
+    SystemRoleCode.WAREHOUSE_EMPLOYEE,
+  ],
+  driver: [SystemRoleCode.DELIVERY_DRIVER],
+  storefront: [SystemRoleCode.RETAILER],
+};
 
 export interface TokenPair {
   accessToken: string;
@@ -112,6 +128,15 @@ export class AuthService {
 
     const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
+      throw new UnauthorizedException("Incorrect email/phone or password.");
+    }
+
+    const userRoles = await this.prisma.userRole.findMany({ where: { userId: user.id }, include: { role: true } });
+    const allowedRoles = AUDIENCE_ROLES[dto.audience];
+    const canUseThisApp = userRoles.some((ur) => ur.role.code && allowedRoles.includes(ur.role.code));
+    if (!canUseThisApp) {
+      // Same message as a wrong password — this doesn't tell a caller
+      // whether the account exists, only that it doesn't work here.
       throw new UnauthorizedException("Incorrect email/phone or password.");
     }
 

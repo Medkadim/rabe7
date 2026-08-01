@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, Length, MinLength } from "class-validator";
+import { IsIn, IsNotEmpty, IsOptional, IsString, Length, MinLength } from "class-validator";
+
+// Which app is signing this person in. Each of the three frontends hardcodes
+// its own value server-side when it calls this endpoint (see each app's
+// api/auth/login/route.ts) — it is never left for the browser to pick, so a
+// driver or customer credential can't simply claim "admin" to get past the
+// role check below.
+export const LOGIN_AUDIENCES = ["admin", "driver", "storefront"] as const;
+export type LoginAudience = (typeof LOGIN_AUDIENCES)[number];
 
 export class LoginDto {
   // Staff sign in with email, customers with phone — this one field takes
@@ -20,4 +28,8 @@ export class LoginDto {
   @IsString()
   @Length(6, 6)
   twoFactorCode?: string;
+
+  @ApiProperty({ enum: LOGIN_AUDIENCES, description: "Which app is signing this person in" })
+  @IsIn(LOGIN_AUDIENCES)
+  audience!: LoginAudience;
 }
