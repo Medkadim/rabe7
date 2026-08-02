@@ -1,13 +1,21 @@
 name: Build Android APK
 
 # Manual only — this isn't part of the normal web app CI, it's a way to
-# produce an installable .apk of the customer storefront wrapper on demand
+# produce an installable .apk of one of the WebView wrapper apps on demand
 # (this sandbox can't build Android apps itself; dl.google.com is blocked
-# by its egress policy). The APK is published to the apk-builds branch
+# by its egress policy). Each app publishes to its own apk-builds-* branch
 # rather than as a workflow artifact so it can be fetched with a plain
 # git pull instead of an authenticated API call.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app to build"
+        type: choice
+        options:
+          - customer
+          - sales
+        default: sales
 
 permissions:
   contents: write
@@ -29,29 +37,50 @@ jobs:
         with:
           gradle-version: 8.7
 
+      - name: Resolve which project/branch/filename this app maps to
+        id: meta
+        run: |
+          case "${{ inputs.app }}" in
+            customer)
+              echo "dir=apps/android" >> "$GITHUB_OUTPUT"
+              echo "apk_name=wasla-customer.apk" >> "$GITHUB_OUTPUT"
+              echo "branch=apk-builds" >> "$GITHUB_OUTPUT"
+              ;;
+            sales)
+              echo "dir=apps/android-sales" >> "$GITHUB_OUTPUT"
+              echo "apk_name=wasla-sales.apk" >> "$GITHUB_OUTPUT"
+              echo "branch=apk-builds-sales" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unknown app: ${{ inputs.app }}" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Build debug APK
-        working-directory: apps/android
+        working-directory: ${{ steps.meta.outputs.dir }}
         run: gradle assembleDebug --no-daemon
 
-      - name: Publish APK to apk-builds branch
+      - name: Publish APK to its builds branch
         run: |
           set -e
-          APK_PATH=$(find apps/android -name "*.apk" | head -n1)
+          APK_PATH=$(find "${{ steps.meta.outputs.dir }}" -name "*.apk" | head -n1)
           echo "Built: $APK_PATH"
           mkdir -p /tmp/apk-out
-          cp "$APK_PATH" /tmp/apk-out/wasla-customer.apk
+          cp "$APK_PATH" "/tmp/apk-out/${{ steps.meta.outputs.apk_name }}"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin apk-builds 2>/dev/null || true
-          if git rev-parse --verify origin/apk-builds >/dev/null 2>&1; then
-            git checkout -B apk-builds origin/apk-builds
+          BRANCH="${{ steps.meta.outputs.branch }}"
+          git fetch origin "$BRANCH" 2>/dev/null || true
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
           else
-            git checkout --orphan apk-builds
+            git checkout --orphan "$BRANCH"
           fi
           git rm -rf . >/dev/null 2>&1 || true
-          cp /tmp/apk-out/wasla-customer.apk .
-          git add wasla-customer.apk
-          git commit -m "Build Wasla customer APK ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-          git push origin apk-builds --force
+          cp "/tmp/apk-out/${{ steps.meta.outputs.apk_name }}" .
+          git add "${{ steps.meta.outputs.apk_name }}"
+          git commit -m "Build ${{ steps.meta.outputs.apk_name }} ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          git push origin "$BRANCH" --force
