@@ -142,7 +142,7 @@ function ProductCard({ product }: { product: Product }) {
   );
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 export default function CatalogPage() {
   const [searchInput, setSearchInput] = useState("");
