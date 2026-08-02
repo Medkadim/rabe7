@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsOptional, IsString, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, ValidateNested } from "class-validator";
 import { CreateOrderItemDto } from "./create-order.dto";
 
 export class UpdateOrderDto {
@@ -8,6 +8,11 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  requestedDeliveryDate?: string;
 
   @ApiPropertyOptional({ type: [CreateOrderItemDto], description: "Replaces the full item list" })
   @IsOptional()

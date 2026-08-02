@@ -115,13 +115,17 @@ export default function ClientDetailPage() {
         <CardContent className="flex flex-col gap-2">
           {!orders?.data.length && <p className="text-sm text-muted">لا توجد طلبات بعد.</p>}
           {orders?.data.map((order) => (
-            <div key={order.id} className="flex items-center justify-between border-b border-line py-2 last:border-0">
+            <Link
+              key={order.id}
+              href={`/orders/${order.id}`}
+              className="flex items-center justify-between border-b border-line py-2 last:border-0 hover:bg-brand-soft/40"
+            >
               <div>
                 <p className="text-sm font-medium text-ink">{order.orderNumber}</p>
                 <p className="text-xs text-muted">{ORDER_STATUS_LABELS[order.status] ?? order.status}</p>
               </div>
               <p className="text-sm font-medium text-ink">{formatPrice(order.total)}</p>
-            </div>
+            </Link>
           ))}
         </CardContent>
       </Card>

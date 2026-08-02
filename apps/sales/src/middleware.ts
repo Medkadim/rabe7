@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const REFRESH_COOKIE = "rabe7_sales_refresh";
-const PROTECTED_PREFIXES = ["/dashboard", "/clients", "/orders"];
+const PROTECTED_PREFIXES = ["/dashboard", "/clients", "/orders", "/products"];
 
 // A coarse gate: presence of the refresh cookie means "there's a session to
 // try". The API is the actual source of truth for whether a request is
@@ -21,5 +21,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/clients/:path*", "/orders/:path*"],
+  matcher: ["/dashboard/:path*", "/clients/:path*", "/orders/:path*", "/products/:path*"],
 };

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "الرئيسية" },
   { href: "/clients", label: "العملاء" },
+  { href: "/products", label: "المنتجات" },
   { href: "/orders/new", label: "طلب جديد" },
 ];
 

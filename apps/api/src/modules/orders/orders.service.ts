@@ -157,10 +157,12 @@ export class OrdersService {
       throw new BadRequestException(`An order in "${order.status}" status can no longer be edited.`);
     }
 
+    const requestedDeliveryDate = dto.requestedDeliveryDate ? new Date(dto.requestedDeliveryDate) : undefined;
+
     if (!dto.items) {
       return this.prisma.order.update({
         where: { id },
-        data: { notes: dto.notes },
+        data: { notes: dto.notes, requestedDeliveryDate },
         include: { items: true, customer: true },
       });
     }
@@ -172,7 +174,7 @@ export class OrdersService {
       await tx.orderItem.deleteMany({ where: { orderId: id } });
       return tx.order.update({
         where: { id },
-        data: { notes: dto.notes, ...totals, items: { create: lines } },
+        data: { notes: dto.notes, requestedDeliveryDate, ...totals, items: { create: lines } },
         include: { items: true, customer: true },
       });
     });
