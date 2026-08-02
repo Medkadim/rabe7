@@ -15,9 +15,14 @@ import { CustomerSegment } from "@prisma/client";
 import { CustomerAddressDto } from "./customer-address.dto";
 
 export class CreateCustomerDto {
-  @ApiProperty({ description: "Short unique code, e.g. CUST-0001" })
+  // Optional: the admin's customer form still lets someone type their own
+  // code. The sales app (reps recruiting a customer in the field) leaves it
+  // out and CustomersService generates one the same way order numbers are —
+  // a rep shouldn't have to invent a unique code on the spot.
+  @ApiPropertyOptional({ description: "Short unique code, e.g. CUST-0001 — auto-generated if omitted" })
+  @IsOptional()
   @IsString()
-  code!: string;
+  code?: string;
 
   @ApiProperty()
   @IsString()
@@ -78,4 +83,9 @@ export class CreateCustomerDto {
   @ValidateNested({ each: true })
   @Type(() => CustomerAddressDto)
   addresses?: CustomerAddressDto[];
+
+  @ApiPropertyOptional({ description: "URL of a photo of the shop/premises, uploaded via /uploads/images" })
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 }

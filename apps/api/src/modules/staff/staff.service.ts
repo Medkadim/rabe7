@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from "@nestjs/comm
 import * as argon2 from "argon2";
 import { SystemRoleCode } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { normalizePhone } from "../auth/utils/phone.util";
 import { CreateStaffDto, STAFF_ROLE_CODES } from "./dto/create-staff.dto";
 
 // passwordHash is deliberately never in this list — this record reaches
@@ -33,6 +34,18 @@ export class StaffService {
       throw new ConflictException(`A staff account with email "${dto.email}" already exists.`);
     }
 
+    // Stored in the same normalized E.164 form AuthService.login compares
+    // against — a sales rep signs in by phone number, so whatever shape
+    // gets written here has to be exactly what a later phone lookup
+    // produces, the same reasoning as the customer self-registration flow.
+    let normalizedPhone: string | null = null;
+    if (dto.phone) {
+      normalizedPhone = normalizePhone(dto.phone);
+      if (!normalizedPhone) {
+        throw new BadRequestException("Enter a valid Moroccan phone number (e.g. 0612345678).");
+      }
+    }
+
     const role = await this.prisma.role.findFirstOrThrow({ where: { tenantId, code: dto.roleCode } });
     const passwordHash = await argon2.hash(dto.password);
 
@@ -40,7 +53,7 @@ export class StaffService {
       data: {
         tenantId,
         email: dto.email,
-        phone: dto.phone,
+        phone: normalizedPhone,
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,

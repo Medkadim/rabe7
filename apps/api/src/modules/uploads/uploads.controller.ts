@@ -2,7 +2,7 @@ import { BadRequestException, Controller, Post, UploadedFile, UseInterceptors } 
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { UploadsService } from "./uploads.service";
-import { RequirePermissions } from "../../common/decorators/permissions.decorator";
+import { RequireAnyPermission } from "../../common/decorators/permissions.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUser } from "../auth/types/authenticated-user.type";
 import { PERMISSIONS } from "../../common/constants/permissions";
@@ -16,8 +16,11 @@ export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
   @Post("images")
-  @RequirePermissions(PERMISSIONS.PRODUCTS_CREATE)
-  @ApiOperation({ summary: "Upload a single product image, returns its public URL" })
+  // Shared by product-photo uploads (admin) and customer-recruitment photo
+  // uploads (sales app) — those two audiences don't share a single
+  // permission, so this needs "any of", not "all of".
+  @RequireAnyPermission(PERMISSIONS.PRODUCTS_CREATE, PERMISSIONS.CUSTOMERS_CREATE)
+  @ApiOperation({ summary: "Upload a single image (product photo or customer premises photo), returns its public URL" })
   @ApiConsumes("multipart/form-data")
   @UseInterceptors(
     FileInterceptor("file", {

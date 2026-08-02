@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SequenceService } from "../../common/sequence/sequence.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { QueryCustomersDto } from "./dto/query-customers.dto";
@@ -8,20 +9,29 @@ import { paginate, PaginatedResult } from "../../common/dto/pagination-query.dto
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sequence: SequenceService,
+  ) {}
 
   async create(tenantId: string, dto: CreateCustomerDto) {
+    // A rep recruiting a customer in the field shouldn't have to invent a
+    // unique code on the spot — generate one the same way order numbers are
+    // when the caller (sales app) doesn't supply one. The admin's own
+    // customer form still passes a manually-chosen code.
+    const code = dto.code ?? this.sequence.formatNumber("CUST", await this.sequence.next(tenantId, "customer"));
+
     const existing = await this.prisma.customer.findFirst({
-      where: { tenantId, code: dto.code },
+      where: { tenantId, code },
     });
     if (existing) {
-      throw new ConflictException(`A customer with code "${dto.code}" already exists.`);
+      throw new ConflictException(`A customer with code "${code}" already exists.`);
     }
 
     return this.prisma.customer.create({
       data: {
         tenantId,
-        code: dto.code,
+        code,
         name: dto.name,
         legalName: dto.legalName,
         taxId: dto.taxId,
@@ -32,6 +42,7 @@ export class CustomersService {
         paymentTermsDays: dto.paymentTermsDays ?? 0,
         assignedRepId: dto.assignedRepId,
         notes: dto.notes,
+        photoUrl: dto.photoUrl,
         addresses: dto.addresses
           ? { create: dto.addresses.map((address) => ({ ...address })) }
           : undefined,

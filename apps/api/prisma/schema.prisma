@@ -46,6 +46,7 @@ model Tenant {
   deliveryRoutes DeliveryRoute[]
   deliveries     Delivery[]
   favorites      Favorite[]
+  salesTargets   SalesTarget[]
 
   @@map("tenants")
 }
@@ -104,11 +105,30 @@ model User {
   stockMovementsPerformed StockMovement[]      @relation("StockMovementPerformedBy")
   returnsCreated          Return[]             @relation("ReturnCreatedBy")
   deliveryRoutesDriven    DeliveryRoute[]      @relation("DeliveryRouteDriver")
+  salesTarget             SalesTarget?
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
   @@index([tenantId, status])
   @@map("users")
+}
+
+// CA (revenue) objectives an admin sets for a sales rep — one row per rep,
+// checked against the rep's own order totals in the sales app's dashboard.
+model SalesTarget {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyTarget   Decimal  @default(0) @db.Decimal(14, 2)
+  weeklyTarget  Decimal  @default(0) @db.Decimal(14, 2)
+  monthlyTarget Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("sales_targets")
 }
 
 // System-defined role codes seeded on install; tenants may add custom roles
@@ -262,6 +282,10 @@ model Customer {
   paymentTermsDays Int             @default(0)
   assignedRepId    String?
   notes            String?
+  // A photo of the shop/premises, taken in the field when a sales rep
+  // recruits the customer — helps staff recognize the stop later. Optional,
+  // same upload pipeline as product images.
+  photoUrl         String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   deletedAt        DateTime?
@@ -483,6 +507,11 @@ model Order {
   taxTotal        Decimal     @default(0) @db.Decimal(14, 2)
   total           Decimal     @default(0) @db.Decimal(14, 2)
   notes           String?
+  // What the customer asked for at order time (typically set by a sales
+  // rep taking the order in the field, defaulting to +24h in that app) —
+  // distinct from DeliveryRoute.scheduledDate, which is when the warehouse
+  // actually plans to run the route.
+  requestedDeliveryDate DateTime?
   placedAt        DateTime?
   confirmedAt     DateTime?
   cancelledAt     DateTime?

@@ -1,6 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from "class-validator";
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDateString,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from "class-validator";
 
 export class CreateOrderItemDto {
   @ApiProperty()
@@ -30,6 +40,11 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ description: "When the customer asked for delivery — set by the sales app, defaults to +24h there" })
+  @IsOptional()
+  @IsDateString()
+  requestedDeliveryDate?: string;
 
   @ApiProperty({ type: [CreateOrderItemDto] })
   @IsArray()

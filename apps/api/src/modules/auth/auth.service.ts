@@ -23,9 +23,11 @@ import { SystemRoleCode } from "@prisma/client";
 import { LoginAudience } from "./dto/login.dto";
 
 // Which system roles may sign in through which app. This is the actual
-// security boundary between the three frontends — a driver or a retailer
+// security boundary between the frontends — a driver or a retailer
 // authenticating successfully must still be refused a session in the admin
-// app, and vice versa, even though all three call the same /auth/login.
+// app, and vice versa, even though all of them call the same /auth/login.
+// A sales rep is allowed on both "admin" (unchanged, pre-existing access)
+// and "sales" (their own dedicated field app) — additive, not a narrowing.
 const AUDIENCE_ROLES: Record<LoginAudience, SystemRoleCode[]> = {
   admin: [
     SystemRoleCode.SUPER_ADMIN,
@@ -35,6 +37,7 @@ const AUDIENCE_ROLES: Record<LoginAudience, SystemRoleCode[]> = {
   ],
   driver: [SystemRoleCode.DELIVERY_DRIVER],
   storefront: [SystemRoleCode.RETAILER],
+  sales: [SystemRoleCode.SALES_REPRESENTATIVE],
 };
 
 export interface TokenPair {

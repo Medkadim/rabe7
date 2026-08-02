@@ -28,6 +28,8 @@ The plan (see the architecture briefing shared earlier in this project) is three
 | Staff accounts | Admin creates logins for sales reps, warehouse staff, and delivery drivers | ✅ Working |
 | Loading slips | Per-driver "what to load" PDF, plus a global recap across every driver for the day — both in Arabic | ✅ Working |
 | Driver app | A separate app where drivers sign in, see their assigned routes/stops with customer info and an itinerary, mark deliveries done, and download the delivery slip (Arabic) | ✅ Working |
+| Sales rep targets | Admin sets a daily/weekly/monthly revenue objective per sales rep | ✅ Working |
+| Sales (prevente) app | A separate app where a sales rep signs in by phone number, recruits new customers in the field (with photo/location), builds an order for a customer, and tracks their own revenue objective vs achieved | ✅ Working |
 | Admin dashboard | Login, live overview, and full list+create/action screens for every module above | ✅ Working |
 | Product photos | Products carry a real image gallery (minimum 3 photos), stored in MinIO, uploaded from the admin product form | ✅ Working |
 | Customer storefront | A separate customer-facing app: self-registration (pending your approval), browse the catalog, cart, checkout, order history | ✅ Working |
@@ -61,6 +63,11 @@ dashboard's Customers page before they can place an order.
 Delivery drivers use another separate app at `http://localhost:3002`, in Arabic. They don't
 self-register — create their login from the admin dashboard's **Staff** page (role: Delivery
 driver), then assign them to a route from the **Delivery** page.
+
+Sales reps use another separate app at `http://localhost:3003`, in Arabic, signing in with
+their phone number. Create their login from the admin dashboard's **Staff** page (role: Sales
+representative — phone number required, it's how they sign in), then set their daily/weekly/
+monthly revenue objective with the **Set targets** action on that same row.
 
 ## Why multi-tenant-ready (even though there's one distributor today)
 

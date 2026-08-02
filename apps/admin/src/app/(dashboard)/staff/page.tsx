@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,15 +38,120 @@ function roleLabel(code: string): string {
   return ROLE_OPTIONS.find((r) => r.code === code)?.label ?? code;
 }
 
-const createStaffSchema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
-  email: z.string().email("Enter a valid email address."),
-  phone: z.string().optional(),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  roleCode: z.string().min(1, "Required"),
-});
+const createStaffSchema = z
+  .object({
+    firstName: z.string().min(1, "Required"),
+    lastName: z.string().min(1, "Required"),
+    email: z.string().email("Enter a valid email address."),
+    phone: z.string().optional(),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    roleCode: z.string().min(1, "Required"),
+  })
+  // Sales reps sign in to their own app by phone number, not email — so
+  // this is the one role where a phone number isn't optional.
+  .refine((values) => values.roleCode !== "SALES_REPRESENTATIVE" || !!values.phone, {
+    message: "Required for sales representatives — it's how they sign in to the sales app.",
+    path: ["phone"],
+  });
 type CreateStaffForm = z.infer<typeof createStaffSchema>;
+
+interface SalesTargets {
+  dailyTarget: number;
+  weeklyTarget: number;
+  monthlyTarget: number;
+}
+
+function TargetsEditor({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useApiQuery<SalesTargets>(["sales", "targets", userId], `/sales/targets/${userId}`);
+  const [dailyTarget, setDailyTarget] = useState("");
+  const [weeklyTarget, setWeeklyTarget] = useState("");
+  const [monthlyTarget, setMonthlyTarget] = useState("");
+
+  useEffect(() => {
+    if (!data) return;
+    setDailyTarget(String(data.dailyTarget));
+    setWeeklyTarget(String(data.weeklyTarget));
+    setMonthlyTarget(String(data.monthlyTarget));
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      apiFetch<SalesTargets>(`/sales/targets/${userId}`, accessToken, {
+        method: "PUT",
+        body: JSON.stringify({
+          dailyTarget: Number(dailyTarget) || 0,
+          weeklyTarget: Number(weeklyTarget) || 0,
+          monthlyTarget: Number(monthlyTarget) || 0,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales", "targets", userId] });
+      onClose();
+    },
+  });
+
+  return (
+    <tr className="border-b border-line bg-brand-soft/40">
+      <td colSpan={6} className="px-5 py-4">
+        {isLoading ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`daily-${userId}`}>Daily CA target</Label>
+              <Input
+                id={`daily-${userId}`}
+                type="number"
+                min={0}
+                step="0.01"
+                value={dailyTarget}
+                onChange={(e) => setDailyTarget(e.target.value)}
+                className="w-32"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`weekly-${userId}`}>Weekly CA target</Label>
+              <Input
+                id={`weekly-${userId}`}
+                type="number"
+                min={0}
+                step="0.01"
+                value={weeklyTarget}
+                onChange={(e) => setWeeklyTarget(e.target.value)}
+                className="w-32"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`monthly-${userId}`}>Monthly CA target</Label>
+              <Input
+                id={`monthly-${userId}`}
+                type="number"
+                min={0}
+                step="0.01"
+                value={monthlyTarget}
+                onChange={(e) => setMonthlyTarget(e.target.value)}
+                className="w-32"
+              />
+            </div>
+            <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+              {save.isPending ? "Saving…" : "Save targets"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            {save.isError && (
+              <p className="text-sm text-critical">
+                {save.error instanceof ApiError ? save.error.message : "Could not save targets."}
+              </p>
+            )}
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
 
 function statusColor(status: string) {
   if (status === "ACTIVE") return "text-success bg-success-soft";
@@ -58,6 +163,7 @@ export default function StaffPage() {
   const { accessToken, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [targetsEditingId, setTargetsEditingId] = useState<string | null>(null);
 
   const { data, isLoading } = useApiQuery<StaffMember[]>(["staff", "list"], "/staff");
 
@@ -129,8 +235,9 @@ export default function StaffPage() {
                 {errors.email && <p className="text-xs text-critical">{errors.email.message}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="phone">Phone (optional)</Label>
+                <Label htmlFor="phone">Phone (required for sales reps)</Label>
                 <Input id="phone" type="tel" placeholder="0612345678" {...register("phone")} />
+                {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="password">Password</Label>
@@ -191,41 +298,60 @@ export default function StaffPage() {
                   </td>
                 </tr>
               )}
-              {data?.map((member) => (
-                <tr key={member.id} className="border-b border-line last:border-0">
-                  <td className="px-5 py-3 font-medium text-ink">
-                    {member.firstName} {member.lastName}
-                  </td>
-                  <td className="px-5 py-3 text-muted">{member.email ?? "—"}</td>
-                  <td className="px-5 py-3 text-muted" dir="ltr">
-                    {member.phone ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-muted">
-                    {member.roles.map((r) => roleLabel(r.role.code)).join(", ") || "—"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(member.status)}`}>
-                      {member.status}
-                    </span>
-                  </td>
-                  {canManage && (
-                    <td className="px-5 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deactivate.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Deactivate ${member.firstName} ${member.lastName}? They won't be able to sign in anymore.`)) {
-                            deactivate.mutate(member.id);
-                          }
-                        }}
-                      >
-                        Deactivate
-                      </Button>
-                    </td>
-                  )}
-                </tr>
-              ))}
+              {data?.map((member) => {
+                const isSalesRep = member.roles.some((r) => r.role.code === "SALES_REPRESENTATIVE");
+                return (
+                  <Fragment key={member.id}>
+                    <tr className="border-b border-line last:border-0">
+                      <td className="px-5 py-3 font-medium text-ink">
+                        {member.firstName} {member.lastName}
+                      </td>
+                      <td className="px-5 py-3 text-muted">{member.email ?? "—"}</td>
+                      <td className="px-5 py-3 text-muted" dir="ltr">
+                        {member.phone ?? "—"}
+                      </td>
+                      <td className="px-5 py-3 text-muted">
+                        {member.roles.map((r) => roleLabel(r.role.code)).join(", ") || "—"}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(member.status)}`}>
+                          {member.status}
+                        </span>
+                      </td>
+                      {canManage && (
+                        <td className="px-5 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            {isSalesRep && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setTargetsEditingId((current) => (current === member.id ? null : member.id))}
+                              >
+                                {targetsEditingId === member.id ? "Close" : "Set targets"}
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deactivate.isPending}
+                              onClick={() => {
+                                if (window.confirm(`Deactivate ${member.firstName} ${member.lastName}? They won't be able to sign in anymore.`)) {
+                                  deactivate.mutate(member.id);
+                                }
+                              }}
+                            >
+                              Deactivate
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {targetsEditingId === member.id && (
+                      <TargetsEditor userId={member.id} onClose={() => setTargetsEditingId(null)} />
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -125,6 +125,24 @@ services:
     depends_on:
       - api
 
+  sales:
+    build:
+      context: .
+      dockerfile: apps/sales/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the sales app's server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

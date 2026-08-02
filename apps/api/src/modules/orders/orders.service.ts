@@ -95,6 +95,7 @@ export class OrdersService {
         customerId: customer.id,
         createdByUserId: userId,
         notes: dto.notes,
+        requestedDeliveryDate: dto.requestedDeliveryDate ? new Date(dto.requestedDeliveryDate) : undefined,
         status: "DRAFT",
         ...totals,
         items: { create: lines },

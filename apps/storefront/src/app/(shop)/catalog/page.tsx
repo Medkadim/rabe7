@@ -142,11 +142,14 @@ function ProductCard({ product }: { product: Product }) {
   );
 }
 
+const PAGE_SIZE = 50;
+
 export default function CatalogPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
+  const [page, setPage] = useState(1);
 
   // Debounce so every keystroke doesn't fire a request.
   useEffect(() => {
@@ -154,11 +157,18 @@ export default function CatalogPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // A category (or search, or filter) can hold more products than one page
+  // — reset back to page 1 whenever the filter itself changes, otherwise
+  // "load more" would keep paging through the *previous* filter's results.
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryId, quickFilter]);
+
   const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
 
   const isDefaultView = !search && !categoryId && !quickFilter;
 
-  const params = new URLSearchParams({ pageSize: "50" });
+  const params = new URLSearchParams({ pageSize: String(PAGE_SIZE), page: String(page) });
   if (search) params.set("search", search);
   if (categoryId) params.set("categoryId", categoryId);
   if (quickFilter === "promotion") params.set("promotion", "true");
@@ -166,12 +176,25 @@ export default function CatalogPage() {
   const productsPath = quickFilter === "popular" ? "/products/popular?limit=20" : `/products?${params.toString()}`;
 
   const { data, isLoading } = useApiQuery<ProductListResponse | Product[]>(
-    ["products", "catalog", search, categoryId, quickFilter],
+    ["products", "catalog", search, categoryId, quickFilter, page],
     productsPath,
   );
 
   // /products/popular returns a bare array; /products returns {data, meta}.
-  const products = Array.isArray(data) ? data : (data?.data ?? []);
+  const pageProducts = Array.isArray(data) ? data : (data?.data ?? []);
+  const total = Array.isArray(data) ? pageProducts.length : (data?.meta.total ?? 0);
+
+  // Each page's results are cached separately by react-query — accumulate
+  // them locally so "load more" appends instead of replacing what's shown.
+  const [accumulated, setAccumulated] = useState<Product[]>([]);
+  useEffect(() => {
+    if (!data) return;
+    setAccumulated((current) => (page === 1 ? pageProducts : [...current, ...pageProducts]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, page]);
+
+  const products = quickFilter === "popular" ? pageProducts : accumulated;
+  const hasMore = quickFilter !== "popular" && products.length < total;
 
   function selectQuickFilter(id: QuickFilter) {
     setQuickFilter((current) => (current === id ? null : id));
@@ -299,6 +322,12 @@ export default function CatalogPage() {
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
+
+      {hasMore && (
+        <Button variant="outline" onClick={() => setPage((p) => p + 1)} disabled={isLoading} className="mx-auto">
+          {isLoading ? "جارٍ التحميل…" : "عرض المزيد"}
+        </Button>
+      )}
     </div>
   );
 }

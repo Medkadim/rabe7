@@ -18,6 +18,7 @@ import { DeliveryModule } from "./modules/delivery/delivery.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { FavoritesModule } from "./modules/favorites/favorites.module";
 import { StaffModule } from "./modules/staff/staff.module";
+import { SalesModule } from "./modules/sales/sales.module";
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { StaffModule } from "./modules/staff/staff.module";
     UploadsModule,
     FavoritesModule,
     StaffModule,
+    SalesModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

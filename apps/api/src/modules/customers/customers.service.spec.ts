@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { CustomersService } from "./customers.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SequenceService } from "../../common/sequence/sequence.service";
 
 type MockPrisma = {
   customer: Record<string, jest.Mock>;
@@ -11,6 +12,7 @@ type MockPrisma = {
 describe("CustomersService", () => {
   let service: CustomersService;
   let prisma: MockPrisma;
+  let sequence: { next: jest.Mock; formatNumber: jest.Mock };
 
   const tenantId = "tenant_1";
 
@@ -28,7 +30,8 @@ describe("CustomersService", () => {
       },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
-    service = new CustomersService(prisma as unknown as PrismaService);
+    sequence = { next: jest.fn(), formatNumber: jest.fn() };
+    service = new CustomersService(prisma as unknown as PrismaService, sequence as unknown as SequenceService);
   });
 
   describe("create", () => {

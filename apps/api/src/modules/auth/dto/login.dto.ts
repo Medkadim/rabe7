@@ -6,7 +6,7 @@ import { IsIn, IsNotEmpty, IsOptional, IsString, Length, MinLength } from "class
 // api/auth/login/route.ts) — it is never left for the browser to pick, so a
 // driver or customer credential can't simply claim "admin" to get past the
 // role check below.
-export const LOGIN_AUDIENCES = ["admin", "driver", "storefront"] as const;
+export const LOGIN_AUDIENCES = ["admin", "driver", "storefront", "sales"] as const;
 export type LoginAudience = (typeof LOGIN_AUDIENCES)[number];
 
 export class LoginDto {
