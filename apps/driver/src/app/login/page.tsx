@@ -41,7 +41,7 @@ export default function LoginPage() {
         <CardHeader>
           <div className="mb-2 flex items-center gap-2">
             <WaslaMark size={26} />
-            <span className="font-display text-lg font-semibold text-ink">وصلة — السائق</span>
+            <span className="font-display text-lg font-semibold text-ink">Waslak — السائق</span>
           </div>
           <CardTitle>تسجيل الدخول</CardTitle>
           <p className="mt-1 text-sm text-muted">اعرض طلباتك المخصصة لك وابدأ التوصيل.</p>

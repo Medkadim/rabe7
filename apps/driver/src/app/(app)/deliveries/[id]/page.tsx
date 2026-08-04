@@ -157,14 +157,14 @@ export default function DeliveryDetailPage() {
                       {item.quantity} {item.product.unit}
                     </p>
                   </td>
-                  <td className="px-5 py-3 text-left tabular-nums">{formatPrice(item.lineTotal)}</td>
+                  <td className="px-5 py-3 text-left font-mono tabular-nums">{formatPrice(item.lineTotal)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="flex items-center justify-between border-t border-line p-4">
             <span className="text-sm text-muted">المجموع الكلي</span>
-            <span className="text-lg font-semibold text-ink">{formatPrice(order.total)}</span>
+            <span className="font-mono text-lg font-bold text-ink">{formatPrice(order.total)}</span>
           </div>
         </CardContent>
       </Card>
@@ -181,7 +181,12 @@ export default function DeliveryDetailPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {delivery.status === "PENDING" && (
-              <Button onClick={() => updateStatus.mutate({ status: "OUT_FOR_DELIVERY" })} disabled={updateStatus.isPending}>
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => updateStatus.mutate({ status: "OUT_FOR_DELIVERY" })}
+                disabled={updateStatus.isPending}
+              >
                 بدء التوصيل
               </Button>
             )}
@@ -199,8 +204,10 @@ export default function DeliveryDetailPage() {
                     onChange={(e) => setCashCollected(e.target.value)}
                   />
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-2">
                   <Button
+                    size="lg"
+                    className="w-full"
                     disabled={updateStatus.isPending}
                     onClick={() =>
                       updateStatus.mutate({
@@ -213,6 +220,7 @@ export default function DeliveryDetailPage() {
                   </Button>
                   <Button
                     variant="destructive"
+                    className="w-full"
                     disabled={updateStatus.isPending}
                     onClick={() => updateStatus.mutate({ status: "FAILED" })}
                   >

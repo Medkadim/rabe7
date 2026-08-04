@@ -28,7 +28,7 @@ function ProgressBar({ achieved, target }: { achieved: number; target: number })
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="flex items-center justify-between text-xs text-muted">
+      <div className="flex items-center justify-between font-mono text-xs text-muted">
         <span>{formatPrice(achieved)}</span>
         <span>{target > 0 ? `${pct}٪ من ${formatPrice(target)}` : "لا يوجد هدف محدد"}</span>
       </div>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
           {customError && <p className="text-sm text-critical">{customError}</p>}
           {customResult && (
             <p className="text-lg font-semibold text-ink">
-              رقم المعاملات المحقق: {formatPrice(customResult.achieved)}
+              رقم المعاملات المحقق: <span className="font-mono font-bold">{formatPrice(customResult.achieved)}</span>
             </p>
           )}
         </CardContent>

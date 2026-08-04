@@ -13,14 +13,16 @@ export function formatArabicDate(date: Date): string {
   return new Intl.DateTimeFormat("ar-MA", { year: "numeric", month: "long", day: "numeric" }).format(date);
 }
 
-// The Wasla mark (see apps/storefront's wasla-mark.tsx) redrawn as a static
-// SVG — a PDF has no CSS custom properties or dark mode, so the brand
-// colors are hardcoded here instead of read from --brand/--accent.
+// The Waslak mark (see apps/storefront's wasla-mark.tsx) redrawn as a
+// static SVG for the PDF header. Headless Chromium (used to render these
+// PDFs) supports oklch() natively, so the brand colors here are the same
+// OKLCH values as the web apps' --brand/--accent tokens, just inlined
+// since a PDF has no CSS custom properties or dark mode to read from.
 function waslaMarkSvg(size = 28): string {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17,31 Q24,21 31,17" stroke="#c97b2c" stroke-width="3.4" stroke-linecap="round" fill="none" />
-    <circle cx="15" cy="33" r="7.5" fill="#1b3a63" />
-    <circle cx="33" cy="15" r="7.5" fill="#1b3a63" />
+  return `<svg width="${size}" height="${(size * 24) / 28}" viewBox="0 0 28 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4,6 L9,18 L14,9 L19,18 L24,6" stroke="oklch(42% 0.085 175)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <circle cx="4" cy="6" r="2.6" fill="oklch(63% 0.15 34)" />
+    <circle cx="24" cy="6" r="2.6" fill="oklch(63% 0.15 34)" />
   </svg>`;
 }
 
@@ -45,14 +47,14 @@ export function pdfShell(options: { eyebrow: string; title: string; subtitle?: s
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 2px solid #1b3a63;
+    border-bottom: 2px solid oklch(35% 0.08 175);
     padding-bottom: 12px;
     margin-bottom: 18px;
   }
   .brand { display: flex; align-items: center; gap: 8px; }
-  .brand-name { font-size: 18px; font-weight: 700; color: #1b3a63; }
-  .eyebrow { font-size: 11px; color: #8a541c; font-weight: 600; }
-  h1 { font-size: 18px; color: #1b3a63; margin: 2px 0; }
+  .brand-name { font-size: 18px; font-weight: 700; color: oklch(35% 0.08 175); }
+  .eyebrow { font-size: 11px; color: oklch(52% 0.14 34); font-weight: 600; }
+  h1 { font-size: 18px; color: oklch(35% 0.08 175); margin: 2px 0; }
   .subtitle { color: #55606f; font-size: 12px; margin: 0; }
   table { width: 100%; border-collapse: collapse; margin-top: 10px; }
   th, td { border-bottom: 1px solid #d8dee6; padding: 7px 8px; text-align: right; font-size: 12px; }
@@ -60,8 +62,8 @@ export function pdfShell(options: { eyebrow: string; title: string; subtitle?: s
   tr:last-child td { border-bottom: none; }
   .muted { color: #55606f; }
   .totals-row td { border: none; padding-top: 4px; }
-  .totals-row.grand td { font-size: 14px; font-weight: 700; color: #1b3a63; padding-top: 8px; }
-  .section-title { font-size: 13px; font-weight: 700; color: #1b3a63; margin: 18px 0 6px; }
+  .totals-row.grand td { font-size: 14px; font-weight: 700; color: oklch(35% 0.08 175); padding-top: 8px; }
+  .section-title { font-size: 13px; font-weight: 700; color: oklch(35% 0.08 175); margin: 18px 0 6px; }
   .badge {
     display: inline-block;
     border-radius: 999px;
@@ -78,14 +80,14 @@ export function pdfShell(options: { eyebrow: string; title: string; subtitle?: s
   <div class="header">
     <div class="brand">
       ${waslaMarkSvg(30)}
-      <span class="brand-name">Wasla</span>
+      <span class="brand-name">Waslak</span>
     </div>
     <div class="eyebrow">${eyebrow}</div>
   </div>
   <h1>${title}</h1>
   ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}
   ${bodyHtml}
-  <div class="footer">تم إنشاء هذا المستند تلقائيًا بواسطة نظام Wasla.</div>
+  <div class="footer">تم إنشاء هذا المستند تلقائيًا بواسطة نظام Waslak.</div>
 </body>
 </html>`;
 }

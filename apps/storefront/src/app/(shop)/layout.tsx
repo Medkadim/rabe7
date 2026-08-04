@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { CartProvider } from "@/lib/cart-context";
 import { NavHeader } from "@/components/nav-header";
+import { ShopHeader } from "@/components/shop-header";
 
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   const { status, customer, isApproved } = useAuth();
@@ -27,6 +28,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
   return (
     <CartProvider>
       <div className="min-h-screen">
+        <ShopHeader />
         {customer && !isApproved && (
           <div className="border-b border-warning bg-warning/10 px-4 py-3 text-center text-sm text-warning">
             {customer.status === "PENDING_APPROVAL"

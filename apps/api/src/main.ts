@@ -39,7 +39,7 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("Wasla API")
+    .setTitle("Waslak API")
     .setDescription("B2B distribution platform — REST API")
     .setVersion("1.0")
     .addBearerAuth()

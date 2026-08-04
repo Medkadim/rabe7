@@ -295,7 +295,7 @@ export class AuthService {
 
     await this.notifications.sendEmail({
       to: user.email,
-      subject: "Reset your Wasla password",
+      subject: "Reset your Waslak password",
       body: `Use this code to reset your password (valid 1 hour): ${rawToken}`,
     });
   }
@@ -368,7 +368,7 @@ export class AuthService {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const secret = authenticator.generateSecret();
     await this.prisma.user.update({ where: { id: userId }, data: { twoFactorSecret: secret } });
-    const otpauthUrl = authenticator.keyuri(user.email ?? user.phone ?? user.id, "Wasla", secret);
+    const otpauthUrl = authenticator.keyuri(user.email ?? user.phone ?? user.id, "Waslak", secret);
     return { secret, otpauthUrl };
   }
 

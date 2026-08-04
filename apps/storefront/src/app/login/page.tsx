@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WaslaMark } from "@/components/wasla-mark";
 
 const loginSchema = z.object({
   phone: z.string().min(6, "أدخل رقم هاتف صحيح."),
@@ -40,6 +41,10 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
+          <div className="mb-2 flex items-center gap-2">
+            <WaslaMark size={26} />
+            <span className="font-display text-lg font-extrabold text-ink">Waslak</span>
+          </div>
           <CardTitle>سجّل الدخول لطلب المنتجات</CardTitle>
           <p className="mt-1 text-sm text-muted">اطلب من الموزع الخاص بك في أي وقت.</p>
         </CardHeader>

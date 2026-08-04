@@ -11,24 +11,20 @@ function StatCard({ label, path, queryKey }: { label: string; path: string; quer
   const { data, isLoading } = useApiQuery<PaginatedMeta>([queryKey, "count"], `${path}?pageSize=1`);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted">{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-semibold tabular-nums text-ink">
-          {isLoading ? "…" : (data?.meta.total ?? 0)}
-        </div>
-      </CardContent>
+    <Card className="p-[18px]">
+      <div className="mb-2 text-xs font-semibold text-muted">{label}</div>
+      <div className="font-mono text-2xl font-bold tabular-nums text-ink">
+        {isLoading ? "…" : (data?.meta.total ?? 0)}
+      </div>
     </Card>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-semibold text-ink">Overview</h1>
+        <h1 className="text-[19px] font-extrabold text-ink">Overview</h1>
         <p className="text-sm text-muted">A live snapshot of your distribution business.</p>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

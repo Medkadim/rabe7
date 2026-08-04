@@ -1,49 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  /* Wasla brand — see the charte graphique. Indigo is the brand color
-     (headers, nav, the logo mark); amber is the one action color, used
-     only for buttons/links so it never competes with itself. Success/
-     warning/critical are deliberately separate hues from the amber
-     accent — a "Confirmed" badge must never look like a button. */
-  --paper: #eef0f4;
-  --paper-raised: #ffffff;
-  --ink: #14202e;
-  --muted: #55606f;
-  --line: #d8dee6;
-  --brand: #1b3a63;
-  --brand-soft: #e7ecf3;
-  --brand-ink: #10233f;
-  --accent: #c97b2c;
-  --accent-soft: #f6e9d9;
-  --accent-ink: #8a541c;
-  --success: #2f7a5c;
-  --success-soft: #dceae3;
-  --critical: #b23a3a;
-  --critical-soft: #f3dbdb;
-  --warning: #a6641f;
-  --warning-soft: #f1e1cc;
+  /* Waslak brand — teal is the brand color (headers, nav, the logo mark's
+     zigzag line); amber is the one action color, used only for buttons/
+     links so it never competes with itself. Success/warning/critical are
+     deliberately separate hues from the amber accent — a "Confirmed" badge
+     must never look like a button. */
+  --paper: oklch(96% 0.004 175);
+  --paper-raised: oklch(100% 0 0);
+  --ink: oklch(23% 0.03 175);
+  --muted: oklch(51% 0.015 175);
+  --line: oklch(90% 0.0055 175);
+  --brand: oklch(42% 0.085 175);
+  --brand-soft: oklch(94% 0.025 175);
+  --brand-ink: oklch(35% 0.08 175);
+  --accent: oklch(63% 0.15 34);
+  --accent-soft: oklch(95% 0.04 34);
+  --accent-ink: oklch(52% 0.14 34);
+  --success: oklch(45% 0.1 145);
+  --success-soft: oklch(94% 0.03 145);
+  --critical: oklch(53% 0.16 25);
+  --critical-soft: oklch(94% 0.03 25);
+  --warning: oklch(60% 0.13 60);
+  --warning-soft: oklch(95% 0.04 60);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0f1620;
-    --paper-raised: #16202c;
-    --ink: #e9edf2;
-    --muted: #93a0af;
-    --line: #28333f;
-    --brand: #6b8fbe;
-    --brand-soft: #1c2634;
-    --brand-ink: #a9c1de;
-    --accent: #e0954b;
-    --accent-soft: #3a2b18;
-    --accent-ink: #f0b273;
-    --success: #5dae8b;
-    --success-soft: #16281f;
-    --critical: #e08787;
-    --critical-soft: #351c1c;
-    --warning: #d3944c;
-    --warning-soft: #332413;
+    --paper: oklch(18% 0.012 175);
+    --paper-raised: oklch(24% 0.014 175);
+    --ink: oklch(93% 0.006 175);
+    --muted: oklch(68% 0.012 175);
+    --line: oklch(30% 0.012 175);
+    --brand: oklch(70% 0.06 175);
+    --brand-soft: oklch(26% 0.03 175);
+    --brand-ink: oklch(85% 0.04 175);
+    --accent: oklch(70% 0.12 34);
+    --accent-soft: oklch(28% 0.06 34);
+    --accent-ink: oklch(82% 0.09 34);
+    --success: oklch(68% 0.1 145);
+    --success-soft: oklch(24% 0.04 145);
+    --critical: oklch(72% 0.12 25);
+    --critical-soft: oklch(26% 0.05 25);
+    --warning: oklch(74% 0.1 60);
+    --warning-soft: oklch(26% 0.05 60);
   }
 }
 
@@ -65,8 +65,8 @@
   --color-critical-soft: var(--critical-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-sora), var(--font-plex-sans), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 

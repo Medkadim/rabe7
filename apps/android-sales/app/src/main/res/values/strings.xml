@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">وصلة — المندوب</string>
+    <string name="app_name">Waslak — المندوب</string>
     <!-- Same server as the customer app (apps/android), different port —
          the sales app is published on :3003. Update this if the server's
          address ever changes, then rebuild. -->

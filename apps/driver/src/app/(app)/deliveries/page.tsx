@@ -85,7 +85,7 @@ export default function DeliveriesPage() {
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted">
                       <span>{stopAddress(delivery)}</span>
-                      <span className="tabular-nums text-ink">{formatPrice(delivery.order.total)}</span>
+                      <span className="font-mono tabular-nums text-ink">{formatPrice(delivery.order.total)}</span>
                     </div>
                   </Link>
                 ))}
