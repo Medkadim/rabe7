@@ -52,6 +52,12 @@ export const PERMISSIONS = {
   DELIVERY_READ: "delivery.read",
   DELIVERY_ROUTES_MANAGE: "delivery.routes.manage",
   DELIVERY_UPDATE_STATUS: "delivery.update_status",
+
+  REPORTS_READ: "reports.read",
+  // Deliberately separate from REPORTS_READ: the platform commission is
+  // what Waslak itself earns off the distributor's sales, not an
+  // operational metric — kept out of the general reports permission.
+  PLATFORM_FEE_READ: "platform_fee.read",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -100,4 +106,7 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
   { code: PERMISSIONS.DELIVERY_READ, module: "delivery", description: "View delivery routes and statuses" },
   { code: PERMISSIONS.DELIVERY_ROUTES_MANAGE, module: "delivery", description: "Create routes and assign orders/drivers" },
   { code: PERMISSIONS.DELIVERY_UPDATE_STATUS, module: "delivery", description: "Update a delivery's status (out for delivery, delivered, failed)" },
+
+  { code: PERMISSIONS.REPORTS_READ, module: "reports", description: "View revenue, product, and customer statistics" },
+  { code: PERMISSIONS.PLATFORM_FEE_READ, module: "reports", description: "View the platform's commission on delivered orders" },
 ];
