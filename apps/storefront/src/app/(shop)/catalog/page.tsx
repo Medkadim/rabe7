@@ -7,9 +7,7 @@ import { useCart } from "@/lib/cart-context";
 import { useFavorites } from "@/lib/use-favorites";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { FavoriteButton } from "@/components/ui/favorite-button";
-import { Card } from "@/components/ui/card";
 import { HomeBanner } from "@/components/home-banner";
 import { cn, formatPrice } from "@/lib/utils";
 
@@ -23,6 +21,7 @@ interface Product {
   isFeatured: boolean;
   isPromotion: boolean;
   images: { url: string }[];
+  category: { id: string; name: string } | null;
 }
 
 interface ProductListResponse {
@@ -83,18 +82,17 @@ const CATEGORY_COLORS = ["bg-brand", "bg-accent", "bg-success", "bg-warning", "b
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { favoritedIds, toggle, error: favoriteError } = useFavorites();
-  const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const outOfStock = product.currentStock <= 0;
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <div className="flex flex-col">
       <Link href={`/catalog/${product.id}`} className="relative block">
         {product.images[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.images[0].url} alt={product.name} className="h-40 w-full object-cover" />
+          <img src={product.images[0].url} alt={product.name} className="h-44 w-full object-contain" />
         ) : (
-          <div className="h-40 w-full bg-brand-soft" />
+          <div className="h-44 w-full rounded-[10px] bg-brand-soft" />
         )}
         {(product.isPromotion || product.isFeatured) && (
           <span
@@ -112,33 +110,31 @@ function ProductCard({ product }: { product: Product }) {
           className="absolute end-2 top-2"
         />
       </Link>
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1 pt-3">
         <Link href={`/catalog/${product.id}`}>
-          <p className="font-medium text-ink hover:underline">{product.name}</p>
-          <p className="text-xs text-muted">{product.unit}</p>
+          {product.category && <p className="text-left text-xs text-muted">{product.category.name}</p>}
+          <p className="text-left text-[15px] font-bold text-ink hover:underline">{product.name}</p>
+          <p className="text-left text-xs text-muted">{product.unit}</p>
         </Link>
-        <p className="text-lg font-semibold text-ink">{formatPrice(product.basePrice)}</p>
-        {favoriteError && <p className="text-xs text-critical">{favoriteError}</p>}
+        <p className="text-left text-lg font-semibold text-ink">{formatPrice(product.basePrice)}</p>
+        {favoriteError && <p className="text-left text-xs text-critical">{favoriteError}</p>}
         {outOfStock ? (
-          <p className="mt-auto text-xs font-medium text-critical">غير متوفر</p>
+          <p className="mt-auto text-left text-xs font-medium text-critical">غير متوفر</p>
         ) : (
-          <div className="mt-auto flex flex-col gap-2">
-            <QuantityStepper value={quantity} onChange={setQuantity} className="w-full" />
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={() => {
-                addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, quantity);
-                setAdded(true);
-                setTimeout(() => setAdded(false), 1200);
-              }}
-            >
-              {added ? "أُضيف ✓" : "أضف إلى السلة"}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            className="mt-auto w-full"
+            onClick={() => {
+              addItem({ productId: product.id, name: product.name, unitPrice: Number(product.basePrice) }, 1);
+              setAdded(true);
+              setTimeout(() => setAdded(false), 1200);
+            }}
+          >
+            {added ? "أُضيف ✓" : "أضف إلى السلة"}
+          </Button>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -317,7 +313,7 @@ export default function CatalogPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
