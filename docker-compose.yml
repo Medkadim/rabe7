@@ -61,6 +61,11 @@ services:
       REDIS_PORT: 6379
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      # Picked up by nginx-proxy/acme-companion below (see their comment) —
+      # every app needing a public HTTPS hostname declares it the same way.
+      VIRTUAL_HOST: ${API_DOMAIN}
+      VIRTUAL_PORT: 4000
+      LETSENCRYPT_HOST: ${API_DOMAIN}
     ports:
       - "${API_PORT:-4000}:4000"
     depends_on:
@@ -84,6 +89,9 @@ services:
       # Docker's internal network, not the .env file: the admin server calls
       # the api container by its service name, never through localhost.
       INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${ADMIN_DOMAIN}
+      VIRTUAL_PORT: 3000
+      LETSENCRYPT_HOST: ${ADMIN_DOMAIN}
     ports:
       - "3000:3000"
     depends_on:
@@ -102,6 +110,9 @@ services:
       # Docker's internal network, not the .env file: the storefront server
       # calls the api container by its service name, never through localhost.
       INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${STOREFRONT_DOMAIN}
+      VIRTUAL_PORT: 3001
+      LETSENCRYPT_HOST: ${STOREFRONT_DOMAIN}
     ports:
       - "3001:3001"
     depends_on:
@@ -120,6 +131,9 @@ services:
       # Docker's internal network, not the .env file: the driver app's server
       # calls the api container by its service name, never through localhost.
       INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${DRIVER_DOMAIN}
+      VIRTUAL_PORT: 3002
+      LETSENCRYPT_HOST: ${DRIVER_DOMAIN}
     ports:
       - "3002:3002"
     depends_on:
@@ -138,23 +152,58 @@ services:
       # Docker's internal network, not the .env file: the sales app's server
       # calls the api container by its service name, never through localhost.
       INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${SALES_DOMAIN}
+      VIRTUAL_PORT: 3003
+      LETSENCRYPT_HOST: ${SALES_DOMAIN}
     ports:
       - "3003:3003"
     depends_on:
       - api
 
-  nginx:
-    image: nginx:1.27-alpine
+  # Watches the other containers' VIRTUAL_HOST labels above and generates
+  # nginx server blocks for them automatically — no hand-written nginx.conf
+  # to keep in sync every time a subdomain is added or changed.
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:latest
     restart: unless-stopped
-    volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
     depends_on:
       - api
       - admin
+      - storefront
+      - driver
+      - sales
+
+  # Watches the same containers and automatically requests/renews a Let's
+  # Encrypt certificate for each LETSENCRYPT_HOST — first issuance happens
+  # within a minute or two of the domain's DNS pointing here; nothing to
+  # run by hand, and it keeps renewing on its own every ~60 days.
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    restart: unless-stopped
+    environment:
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy
 
 volumes:
   pg_data:
   redis_data:
   minio_data:
+  certs:
+  vhost:
+  html:
+  acme:

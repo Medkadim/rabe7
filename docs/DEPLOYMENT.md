@@ -70,12 +70,31 @@ password immediately** (see README for the seeded credentials).
 
 ## 7. Put a domain and HTTPS in front of it
 
-The bundled nginx config proxies port 80 to the right app. For a real domain, the
-recommended path is to put [Caddy](https://caddyserver.com) or a managed load balancer in
-front of it for automatic HTTPS — a one-line Caddyfile (`yourdomain.com { reverse_proxy
-localhost:80 }`) is enough. We didn't bake a specific HTTPS provider into the compose file
-because that choice depends on where you host (a cloud load balancer often handles it for
-free) — ask when you're ready to pick a domain and we'll wire up whichever fits.
+`docker-compose.yml` includes `nginx-proxy` + `acme-companion`: together they watch the
+other containers, generate the right nginx routing automatically, and request/renew a free
+Let's Encrypt certificate for each one — no nginx config to hand-write, no certbot command
+to run.
+
+1. **Pick a subdomain for each app** (recommended: `yourdomain.com` → storefront,
+   `admin.yourdomain.com` → admin, plus one each for driver and sales).
+2. **Add a DNS "A" record for every one of them**, at whichever registrar/DNS host you
+   bought the domain from, pointing to this server's public IP address. This can take
+   anywhere from a few minutes to a few hours to propagate — you can check with
+   `dig +short admin.yourdomain.com` (should print the server's IP once it's live).
+3. **Set the `*_DOMAIN` variables and `LETSENCRYPT_EMAIL`** in `.env` (see the commented-out
+   examples there), and update `ADMIN_URL`, `STOREFRONT_URL`, `DRIVER_URL`, `SALES_URL`,
+   `API_URL`, and `NEXT_PUBLIC_API_URL` to the real `https://` addresses. Also flip
+   `COOKIE_SECURE` to `true` — it must be true once the site is served over HTTPS, or
+   sign-in silently breaks.
+4. **Only after DNS has propagated**, redeploy:
+   ```bash
+   docker compose up -d
+   ```
+   `acme-companion` notices the new containers within about a minute and requests each
+   certificate automatically. Watch it happen with `docker compose logs -f acme-companion`.
+5. Once every app loads over `https://`, the direct `IP:port` addresses (e.g.
+   `http://your-server-ip:3000`) still work as a fallback — safe to remove the `ports:`
+   line under each app in `docker-compose.yml` later if you want only the domain reachable.
 
 ## Ongoing operations
 
