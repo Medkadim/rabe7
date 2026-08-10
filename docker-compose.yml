@@ -165,6 +165,11 @@ services:
   # to keep in sync every time a subdomain is added or changed.
   nginx-proxy:
     image: nginxproxy/nginx-proxy:latest
+    # acme-companion below finds its nginx-proxy partner by container name
+    # (or falls back to error) — Compose's auto-generated name
+    # ("rabe7-nginx-proxy-1") isn't recognized, so this is pinned to the
+    # plain name every setup guide for this pair assumes.
+    container_name: nginx-proxy
     restart: unless-stopped
     ports:
       - "80:80"
@@ -190,11 +195,13 @@ services:
     restart: unless-stopped
     environment:
       DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
+    # Sharing nginx-proxy's own volumes (rather than mounting matching
+    # named volumes separately) is what lets acme-companion auto-detect
+    # it as its partner — this is the official pairing pattern.
+    volumes_from:
+      - nginx-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
       - acme:/etc/acme.sh
     depends_on:
       - nginx-proxy
