@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Waslak</string>
     <!-- Update this if the server's address ever changes, then rebuild. -->
-    <string name="base_url">http://204.168.193.65:3001</string>
+    <string name="base_url">https://waslak.ma</string>
 </resources>
