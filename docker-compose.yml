@@ -38,6 +38,14 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # Same nginx-proxy/acme-companion pairing as the app containers (see
+      # their comments) — gives uploaded images (product photos, delivery
+      # proof-of-delivery, customer shop photos) a real HTTPS address
+      # instead of the bare IP, which browsers block as mixed content on
+      # an https:// page.
+      VIRTUAL_HOST: ${STORAGE_DOMAIN}
+      VIRTUAL_PORT: 9000
+      LETSENCRYPT_HOST: ${STORAGE_DOMAIN}
     ports:
       - "${MINIO_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
