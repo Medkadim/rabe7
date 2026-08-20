@@ -5,6 +5,7 @@ import { CreatePromotionDto } from "./dto/create-promotion.dto";
 import { UpdatePromotionDto } from "./dto/update-promotion.dto";
 import { QueryPromotionsDto } from "./dto/query-promotions.dto";
 import { paginate, PaginatedResult } from "../../common/dto/pagination-query.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 export interface LineDiscount {
   discountAmount: number;
@@ -19,7 +20,10 @@ export interface LineBonus {
 
 @Injectable()
 export class PromotionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(tenantId: string, dto: CreatePromotionDto) {
     this.assertShapeValid(dto);
@@ -31,7 +35,7 @@ export class PromotionsService {
       await this.assertProductExists(tenantId, productId);
     }
 
-    return this.prisma.promotion.create({
+    const promotion = await this.prisma.promotion.create({
       data: {
         tenantId,
         name: dto.name,
@@ -53,6 +57,10 @@ export class PromotionsService {
       },
       include: { products: true, customers: true },
     });
+    // Fire-and-forget: a slow/failed push delivery must never fail the
+    // promotion creation request itself.
+    this.notifications.notifyNewPromotion(tenantId, promotion.id, promotion.name).catch(() => undefined);
+    return promotion;
   }
 
   private assertShapeValid(dto: CreatePromotionDto | UpdatePromotionDto): void {

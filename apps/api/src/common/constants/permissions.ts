@@ -58,6 +58,8 @@ export const PERMISSIONS = {
   // what Waslak itself earns off the distributor's sales, not an
   // operational metric — kept out of the general reports permission.
   PLATFORM_FEE_READ: "platform_fee.read",
+
+  SETTINGS_MANAGE: "settings.manage",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -109,4 +111,6 @@ export const ALL_PERMISSIONS: { code: PermissionCode; module: string; descriptio
 
   { code: PERMISSIONS.REPORTS_READ, module: "reports", description: "View revenue, product, and customer statistics" },
   { code: PERMISSIONS.PLATFORM_FEE_READ, module: "reports", description: "View the platform's commission on delivered orders" },
+
+  { code: PERMISSIONS.SETTINGS_MANAGE, module: "settings", description: "Change store-wide settings (e.g. the storefront home banner)" },
 ];

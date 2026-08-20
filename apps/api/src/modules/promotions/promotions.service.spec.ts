@@ -17,7 +17,8 @@ describe("PromotionsService", () => {
       customer: { findUnique: jest.fn().mockResolvedValue({ addresses: [] }) },
       promotion: { findMany: jest.fn() },
     };
-    service = new PromotionsService(prisma as unknown as PrismaService);
+    const notifications = { notifyNewPromotion: jest.fn() };
+    service = new PromotionsService(prisma as unknown as PrismaService, notifications as never);
   });
 
   describe("resolveDiscount", () => {

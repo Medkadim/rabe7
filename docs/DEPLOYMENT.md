@@ -96,6 +96,39 @@ to run.
    `http://your-server-ip:3000`) still work as a fallback — safe to remove the `ports:`
    line under each app in `docker-compose.yml` later if you want only the domain reachable.
 
+## 8. Push notifications (optional)
+
+Customers can get a push alert whenever a new product or promotion is added — on the
+web storefront right away, and in the Android app once it's rebuilt with Firebase set up.
+Nothing else breaks if you skip this section.
+
+1. **Create a free Firebase project** at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Add a Web App** to it (the `</>` icon on the project overview page). Copy its config
+   values into `.env` as `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`,
+   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, and `NEXT_PUBLIC_FIREBASE_APP_ID` (see the
+   commented-out examples in `.env.example`). Then, under **Project settings → Cloud
+   Messaging → Web Push certificates**, generate one and copy it into
+   `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
+3. **Generate a service account key**: **Project settings → Service accounts → Generate new
+   private key** downloads a JSON file. Copy its `project_id`, `client_email`, and
+   `private_key` fields into `.env` as `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and
+   `FIREBASE_PRIVATE_KEY` — keep the key's `\n` sequences exactly as written, all on one line,
+   wrapped in quotes.
+4. **Rebuild storefront and api** so the new values take effect (`NEXT_PUBLIC_*` values are
+   baked in at build time, same reason as `NEXT_PUBLIC_API_URL` in section 7):
+   ```bash
+   docker compose build api storefront
+   docker compose up -d
+   ```
+5. **Android app (optional, only needed for push while the app is fully closed)**: in the
+   Firebase console, **Add app → Android**, using package name `com.wasla.customer`. Download
+   the `google-services.json` it gives you, then in the GitHub repo go to **Settings → Secrets
+   and variables → Actions → New repository secret**, name it
+   `GOOGLE_SERVICES_JSON_CUSTOMER`, and paste the entire file's contents as the value. The next
+   time the "Build Android APK" workflow runs for the customer app, it picks this up
+   automatically and the resulting APK will have push notifications working even when the app
+   is fully closed.
+
 ## Ongoing operations
 
 ### Deploying a new version

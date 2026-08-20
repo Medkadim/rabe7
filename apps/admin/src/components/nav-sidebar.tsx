@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Package, ClipboardList, Wallet, Tag, Warehouse, Truck, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, Package, ClipboardList, Wallet, Tag, Warehouse, Truck, UserCog, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WaslaMark } from "@/components/wasla-mark";
 import { useAuth } from "@/lib/auth-context";
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/promotions", label: "Promotions", icon: Tag },
   { href: "/warehouse", label: "Warehouse", icon: Warehouse },
   { href: "/delivery", label: "Delivery", icon: Truck },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function NavSidebar() {

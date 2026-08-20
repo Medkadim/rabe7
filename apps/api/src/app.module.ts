@@ -20,6 +20,7 @@ import { FavoritesModule } from "./modules/favorites/favorites.module";
 import { StaffModule } from "./modules/staff/staff.module";
 import { SalesModule } from "./modules/sales/sales.module";
 import { StatsModule } from "./modules/stats/stats.module";
+import { SettingsModule } from "./modules/settings/settings.module";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { StatsModule } from "./modules/stats/stats.module";
     StaffModule,
     SalesModule,
     StatsModule,
+    SettingsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

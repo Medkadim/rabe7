@@ -6,10 +6,13 @@ import { useAuth } from "@/lib/auth-context";
 import { CartProvider } from "@/lib/cart-context";
 import { NavHeader } from "@/components/nav-header";
 import { ShopHeader } from "@/components/shop-header";
+import { WhatsAppButton } from "@/components/whatsapp-button";
+import { usePushNotifications } from "@/lib/use-push-notifications";
 
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   const { status, customer, isApproved } = useAuth();
   const router = useRouter();
+  usePushNotifications();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -37,6 +40,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           </div>
         )}
         <main className="mx-auto max-w-5xl px-4 pb-24 pt-6">{children}</main>
+        <WhatsAppButton />
         <NavHeader />
       </div>
     </CartProvider>

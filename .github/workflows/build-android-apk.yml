@@ -57,6 +57,12 @@ jobs:
               ;;
           esac
 
+      - name: Write google-services.json (push notifications, customer app only)
+        if: inputs.app == 'customer' && secrets.GOOGLE_SERVICES_JSON_CUSTOMER != ''
+        env:
+          GOOGLE_SERVICES_JSON_CUSTOMER: ${{ secrets.GOOGLE_SERVICES_JSON_CUSTOMER }}
+        run: echo "$GOOGLE_SERVICES_JSON_CUSTOMER" > apps/android/app/google-services.json
+
       - name: Build debug APK
         working-directory: ${{ steps.meta.outputs.dir }}
         run: gradle assembleDebug --no-daemon

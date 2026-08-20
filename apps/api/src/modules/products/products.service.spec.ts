@@ -18,7 +18,8 @@ describe("ProductsService.resolvePrice", () => {
       productPrice: { findFirst: jest.fn() },
       product: { findFirst: jest.fn() },
     };
-    service = new ProductsService(prisma as unknown as PrismaService);
+    const notifications = { notifyNewProduct: jest.fn() };
+    service = new ProductsService(prisma as unknown as PrismaService, notifications as never);
   });
 
   it("prefers a customer-specific price over everything else", async () => {

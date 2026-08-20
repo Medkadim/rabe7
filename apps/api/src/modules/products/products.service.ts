@@ -9,10 +9,14 @@ import { CreateProductPriceDto, CreateCustomerPriceDto } from "./dto/product-pri
 import { CreateCategoryDto, CreateBrandDto, UpdateCategoryDto } from "./dto/category-brand.dto";
 import { BulkImportProductRowDto } from "./dto/bulk-import-products.dto";
 import { paginate, PaginatedResult } from "../../common/dto/pagination-query.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // ---- Categories ----------------------------------------------------
 
@@ -79,7 +83,7 @@ export class ProductsService {
       throw new ConflictException(`A product with SKU "${dto.sku}" already exists.`);
     }
     const { images, ...productData } = dto;
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         tenantId,
         ...productData,
@@ -87,6 +91,10 @@ export class ProductsService {
       },
       include: { images: { orderBy: { sortOrder: "asc" } } },
     });
+    // Fire-and-forget: a slow/failed push delivery must never fail the
+    // product creation request itself.
+    this.notifications.notifyNewProduct(tenantId, product.id, product.name).catch(() => undefined);
+    return product;
   }
 
   // Historical-data import from a spreadsheet — no photos yet (added
