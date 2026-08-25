@@ -23,6 +23,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # An if: condition can't reference `secrets` directly — routing it
+      # through a job-level env var first is the workaround.
+      HAS_GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON_CUSTOMER != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,7 +62,7 @@ jobs:
           esac
 
       - name: Write google-services.json (push notifications, customer app only)
-        if: inputs.app == 'customer' && secrets.GOOGLE_SERVICES_JSON_CUSTOMER != ''
+        if: inputs.app == 'customer' && env.HAS_GOOGLE_SERVICES_JSON == 'true'
         env:
           GOOGLE_SERVICES_JSON_CUSTOMER: ${{ secrets.GOOGLE_SERVICES_JSON_CUSTOMER }}
         run: echo "$GOOGLE_SERVICES_JSON_CUSTOMER" > apps/android/app/google-services.json
