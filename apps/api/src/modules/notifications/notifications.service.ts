@@ -115,7 +115,7 @@ export class NotificationsService implements OnModuleInit {
 
   async notifyNewProduct(tenantId: string, productId: string, productName: string): Promise<void> {
     await this.broadcastToCustomers(tenantId, {
-      title: "منتج جديد على وصلة",
+      title: "منتج جديد على waslak",
       body: productName,
       data: { type: "product", productId },
     });
@@ -123,7 +123,7 @@ export class NotificationsService implements OnModuleInit {
 
   async notifyNewPromotion(tenantId: string, promotionId: string, promotionName: string): Promise<void> {
     await this.broadcastToCustomers(tenantId, {
-      title: "عرض جديد على وصلة",
+      title: "عرض جديد على waslak",
       body: promotionName,
       data: { type: "promotion", promotionId },
     });
