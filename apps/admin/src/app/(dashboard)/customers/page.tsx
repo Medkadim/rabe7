@@ -11,10 +11,7 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const SEGMENTS = ["RETAIL", "WHOLESALE", "HORECA", "KEY_ACCOUNT", "OTHER"] as const;
 
 interface Customer {
   id: string;
@@ -30,18 +27,32 @@ interface CustomerListResponse {
   meta: { total: number };
 }
 
-// Numeric fields stay as plain strings at the form layer (HTML inputs are
-// strings anyway) and are converted right before the API call — this keeps
-// the form's input and output types identical, which is what the resolver
-// requires.
-const customerFormSchema = z.object({
-  code: z.string().min(1, "Required"),
-  name: z.string().min(1, "Required"),
-  phone: z.string().optional(),
-  segment: z.string().optional(),
-});
+// A temporary password only makes sense alongside a phone number — that's
+// how the customer actually logs in — so it's enforced here rather than
+// left for the API's own error to surface after a submit.
+const customerFormSchema = z
+  .object({
+    code: z.string().min(1, "Required"),
+    name: z.string().min(1, "Required"),
+    phone: z.string().optional(),
+    password: z.string().optional(),
+  })
+  .refine((values) => !values.password || values.password.length === 0 || values.phone, {
+    message: "A phone number is required to set a temporary password.",
+    path: ["phone"],
+  })
+  .refine((values) => !values.password || values.password.length === 0 || values.password.length >= 8, {
+    message: "At least 8 characters.",
+    path: ["password"],
+  });
 
 type CustomerForm = z.infer<typeof customerFormSchema>;
+
+// An easy-to-read 8-digit code — the admin hands this to the customer so
+// they can log in right away, then change it later from their own account.
+function generateTempPassword(): string {
+  return String(Math.floor(10_000_000 + Math.random() * 90_000_000));
+}
 
 function statusColor(status: string) {
   if (status === "ACTIVE") return "text-success bg-success-soft";
@@ -66,7 +77,7 @@ export default function CustomersPage() {
 
   function startCreate() {
     setEditingId(null);
-    reset({ code: "", name: "", phone: "", segment: "RETAIL" });
+    reset({ code: "", name: "", phone: "", password: generateTempPassword() });
     setShowForm(true);
   }
 
@@ -76,17 +87,17 @@ export default function CustomersPage() {
       code: customer.code,
       name: customer.name,
       phone: customer.phone ?? "",
-      segment: customer.segment,
+      password: "",
     });
     setShowForm(true);
   }
 
   const saveCustomer = useMutation({
     mutationFn: (values: CustomerForm) => {
-      const body = JSON.stringify({
-        ...values,
-        segment: values.segment || undefined,
-      });
+      // password is create-only — the API rejects it on PATCH (see
+      // UpdateCustomerDto), and editing never needs to touch it anyway.
+      const { password, ...rest } = values;
+      const body = JSON.stringify(editingId ? rest : { ...rest, password: password || undefined });
       return editingId
         ? apiFetch<Customer>(`/customers/${editingId}`, accessToken, { method: "PATCH", body })
         : apiFetch<Customer>("/customers", accessToken, { method: "POST", body });
@@ -163,17 +174,19 @@ export default function CustomersPage() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" {...register("phone")} />
+                {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="segment">Segment</Label>
-                <Select id="segment" {...register("segment")}>
-                  {SEGMENTS.map((segment) => (
-                    <option key={segment} value={segment}>
-                      {segment}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              {!editingId && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password">Temporary password</Label>
+                  <Input id="password" className="font-mono" {...register("password")} />
+                  <p className="text-xs text-muted">
+                    Give this to the customer so they can log in — they can change it later from their account.
+                    Leave blank to skip creating a login for now.
+                  </p>
+                  {errors.password && <p className="text-xs text-critical">{errors.password.message}</p>}
+                </div>
+              )}
               <div className="col-span-2 flex items-center gap-3">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create customer"}

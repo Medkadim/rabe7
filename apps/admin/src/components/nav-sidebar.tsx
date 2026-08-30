@@ -7,25 +7,31 @@ import { cn } from "@/lib/utils";
 import { WaslaMark } from "@/components/wasla-mark";
 import { useAuth } from "@/lib/auth-context";
 
+// Some roles besides SUPER_ADMIN/DISTRIBUTOR_MANAGER can sign into this app
+// too (a sales rep, e.g. — see AUDIENCE_ROLES.admin in the API) but only
+// hold a handful of permissions, so most of these sections would 403 for
+// them. `permission` gates a section on that instead of showing every page
+// to everyone regardless of what they can actually use.
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/products", label: "Catalog", icon: Package },
-  { href: "/customers", label: "Customers", icon: Users },
-  { href: "/staff", label: "Staff", icon: UserCog },
-  { href: "/payments", label: "Payments", icon: Wallet },
-  { href: "/promotions", label: "Promotions", icon: Tag },
-  { href: "/warehouse", label: "Warehouse", icon: Warehouse },
-  { href: "/delivery", label: "Delivery", icon: Truck },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, permission: "reports.read" },
+  { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.read" },
+  { href: "/products", label: "Catalog", icon: Package, permission: "products.read" },
+  { href: "/customers", label: "Customers", icon: Users, permission: "customers.read" },
+  { href: "/staff", label: "Staff", icon: UserCog, permission: "users.manage" },
+  { href: "/payments", label: "Payments", icon: Wallet, permission: "payments.read" },
+  { href: "/promotions", label: "Promotions", icon: Tag, permission: "promotions.read" },
+  { href: "/warehouse", label: "Warehouse", icon: Warehouse, permission: "warehouse.read" },
+  { href: "/delivery", label: "Delivery", icon: Truck, permission: "delivery.read" },
+  { href: "/settings", label: "Settings", icon: Settings, permission: "settings.manage" },
 ];
 
 export function NavSidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const displayName = user?.email?.split("@")[0] ?? "Admin";
   const initials = displayName.slice(0, 2).toUpperCase();
   const role = user?.roles[0]?.replace(/_/g, " ").toLowerCase() ?? "administrator";
+  const visibleItems = NAV_ITEMS.filter((item) => hasPermission(item.permission));
 
   return (
     <nav className="flex w-[232px] shrink-0 flex-col gap-0.5 bg-sidebar-bg p-3.5">
@@ -36,7 +42,7 @@ export function NavSidebar() {
           ADMIN
         </span>
       </div>
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {visibleItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
