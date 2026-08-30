@@ -1,7 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma, SystemRoleCode } from "@prisma/client";
+import * as argon2 from "argon2";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SequenceService } from "../../common/sequence/sequence.service";
+import { normalizePhone } from "../auth/utils/phone.util";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { QueryCustomersDto } from "./dto/query-customers.dto";
@@ -28,26 +30,71 @@ export class CustomersService {
       throw new ConflictException(`A customer with code "${code}" already exists.`);
     }
 
-    return this.prisma.customer.create({
-      data: {
-        tenantId,
-        code,
-        name: dto.name,
-        legalName: dto.legalName,
-        taxId: dto.taxId,
-        phone: dto.phone,
-        email: dto.email,
-        segment: dto.segment,
-        creditLimit: dto.creditLimit ?? 0,
-        paymentTermsDays: dto.paymentTermsDays ?? 0,
-        assignedRepId: dto.assignedRepId,
-        notes: dto.notes,
-        photoUrl: dto.photoUrl,
-        addresses: dto.addresses
-          ? { create: dto.addresses.map((address) => ({ ...address })) }
-          : undefined,
-      },
-      include: { addresses: true },
+    // Optional: whoever's creating this customer (typically a sales rep,
+    // per CreateCustomerDto's comment) can set up a login right away
+    // instead of leaving the customer with no way to sign in. Validated
+    // up front, outside the transaction, so a bad phone/duplicate account
+    // fails before the customer row is ever written.
+    let normalizedPhone: string | null = null;
+    if (dto.password) {
+      if (!dto.phone) {
+        throw new BadRequestException("A phone number is required to set a temporary password.");
+      }
+      normalizedPhone = normalizePhone(dto.phone);
+      if (!normalizedPhone) {
+        throw new BadRequestException("Enter a valid Moroccan phone number (e.g. 0612345678).");
+      }
+      const existingUser = await this.prisma.user.findFirst({
+        where: { tenantId, deletedAt: null, phone: normalizedPhone },
+      });
+      if (existingUser) {
+        throw new ConflictException("An account with this phone number already exists.");
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.create({
+        data: {
+          tenantId,
+          code,
+          name: dto.name,
+          legalName: dto.legalName,
+          taxId: dto.taxId,
+          phone: dto.phone,
+          email: dto.email,
+          segment: dto.segment,
+          creditLimit: dto.creditLimit ?? 0,
+          paymentTermsDays: dto.paymentTermsDays ?? 0,
+          assignedRepId: dto.assignedRepId,
+          notes: dto.notes,
+          photoUrl: dto.photoUrl,
+          addresses: dto.addresses
+            ? { create: dto.addresses.map((address) => ({ ...address })) }
+            : undefined,
+        },
+        include: { addresses: true },
+      });
+
+      if (dto.password && normalizedPhone) {
+        const retailerRole = await tx.role.findFirstOrThrow({
+          where: { tenantId, code: SystemRoleCode.RETAILER },
+        });
+        const passwordHash = await argon2.hash(dto.password);
+        const user = await tx.user.create({
+          data: {
+            tenantId,
+            customerId: customer.id,
+            phone: normalizedPhone,
+            passwordHash,
+            firstName: customer.name,
+            lastName: "",
+            status: "ACTIVE",
+          },
+        });
+        await tx.userRole.create({ data: { userId: user.id, roleId: retailerRole.id } });
+      }
+
+      return customer;
     });
   }
 

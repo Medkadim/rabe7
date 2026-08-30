@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { CustomersService } from "./customers.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SequenceService } from "../../common/sequence/sequence.service";
@@ -6,6 +6,9 @@ import { SequenceService } from "../../common/sequence/sequence.service";
 type MockPrisma = {
   customer: Record<string, jest.Mock>;
   invoice: Record<string, jest.Mock>;
+  user: Record<string, jest.Mock>;
+  role: Record<string, jest.Mock>;
+  userRole: Record<string, jest.Mock>;
   $transaction: jest.Mock;
 };
 
@@ -28,7 +31,22 @@ describe("CustomersService", () => {
       invoice: {
         findMany: jest.fn(),
       },
-      $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
+      user: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+      role: {
+        findFirstOrThrow: jest.fn(),
+      },
+      userRole: {
+        create: jest.fn(),
+      },
+      // create() runs its writes through an interactive transaction
+      // (a callback, not an array of operations) when it also sets up a
+      // login — support both call shapes.
+      $transaction: jest.fn((arg: unknown) =>
+        typeof arg === "function" ? (arg as (tx: unknown) => unknown)(prisma) : Promise.all(arg as unknown[]),
+      ),
     };
     sequence = { next: jest.fn(), formatNumber: jest.fn() };
     service = new CustomersService(prisma as unknown as PrismaService, sequence as unknown as SequenceService);
@@ -61,6 +79,55 @@ describe("CustomersService", () => {
           }),
         }),
       );
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a temporary password with no phone number", async () => {
+      prisma.customer.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create(tenantId, { code: "CUST-0001", name: "Kadim Store", password: "correct-horse-battery" }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.customer.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a temporary password when the phone is already registered", async () => {
+      prisma.customer.findFirst.mockResolvedValue(null);
+      prisma.user.findFirst.mockResolvedValue({ id: "existing-user" });
+
+      await expect(
+        service.create(tenantId, {
+          code: "CUST-0001",
+          name: "Kadim Store",
+          phone: "0612345678",
+          password: "correct-horse-battery",
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(prisma.customer.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a login for the customer when a temporary password is given", async () => {
+      prisma.customer.findFirst.mockResolvedValue(null);
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.customer.create.mockResolvedValue({ id: "c1", code: "CUST-0001", name: "Kadim Store" });
+      prisma.role.findFirstOrThrow.mockResolvedValue({ id: "role_retailer" });
+      prisma.user.create.mockResolvedValue({ id: "u1" });
+
+      await service.create(tenantId, {
+        code: "CUST-0001",
+        name: "Kadim Store",
+        phone: "0612345678",
+        password: "correct-horse-battery",
+      });
+
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tenantId, customerId: "c1", phone: "+212612345678", status: "ACTIVE" }),
+        }),
+      );
+      expect(prisma.userRole.create).toHaveBeenCalledWith({ data: { userId: "u1", roleId: "role_retailer" } });
     });
   });
 

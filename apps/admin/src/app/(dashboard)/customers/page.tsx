@@ -23,8 +23,6 @@ interface Customer {
   phone: string | null;
   status: string;
   segment: string;
-  creditLimit: string;
-  paymentTermsDays: number;
 }
 
 interface CustomerListResponse {
@@ -41,8 +39,6 @@ const customerFormSchema = z.object({
   name: z.string().min(1, "Required"),
   phone: z.string().optional(),
   segment: z.string().optional(),
-  creditLimit: z.string().optional(),
-  paymentTermsDays: z.string().optional(),
 });
 
 type CustomerForm = z.infer<typeof customerFormSchema>;
@@ -70,7 +66,7 @@ export default function CustomersPage() {
 
   function startCreate() {
     setEditingId(null);
-    reset({ code: "", name: "", phone: "", segment: "RETAIL", creditLimit: "", paymentTermsDays: "" });
+    reset({ code: "", name: "", phone: "", segment: "RETAIL" });
     setShowForm(true);
   }
 
@@ -81,8 +77,6 @@ export default function CustomersPage() {
       name: customer.name,
       phone: customer.phone ?? "",
       segment: customer.segment,
-      creditLimit: customer.creditLimit,
-      paymentTermsDays: String(customer.paymentTermsDays),
     });
     setShowForm(true);
   }
@@ -92,8 +86,6 @@ export default function CustomersPage() {
       const body = JSON.stringify({
         ...values,
         segment: values.segment || undefined,
-        creditLimit: values.creditLimit ? Number(values.creditLimit) : undefined,
-        paymentTermsDays: values.paymentTermsDays ? Number(values.paymentTermsDays) : undefined,
       });
       return editingId
         ? apiFetch<Customer>(`/customers/${editingId}`, accessToken, { method: "PATCH", body })
@@ -182,14 +174,6 @@ export default function CustomersPage() {
                   ))}
                 </Select>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="creditLimit">Credit limit</Label>
-                <Input id="creditLimit" type="number" step="0.01" {...register("creditLimit")} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="paymentTermsDays">Payment terms (days)</Label>
-                <Input id="paymentTermsDays" type="number" {...register("paymentTermsDays")} />
-              </div>
               <div className="col-span-2 flex items-center gap-3">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create customer"}
@@ -214,22 +198,20 @@ export default function CustomersPage() {
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Segment</th>
                 <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium text-right">Credit limit</th>
-                <th className="px-5 py-3 font-medium text-right">Terms</th>
                 {showActions && <th className="px-5 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={5} className="px-5 py-6 text-center text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && data?.data.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-6 text-center text-muted">
+                  <td colSpan={5} className="px-5 py-6 text-center text-muted">
                     No customers yet.
                   </td>
                 </tr>
@@ -244,8 +226,6 @@ export default function CustomersPage() {
                       {customer.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums">{customer.creditLimit}</td>
-                  <td className="px-5 py-3 text-right tabular-nums">{customer.paymentTermsDays}d</td>
                   {showActions && (
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap items-center gap-2">

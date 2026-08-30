@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  MinLength,
   ValidateNested,
 } from "class-validator";
 import { CustomerSegment } from "@prisma/client";
@@ -76,6 +77,18 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Lets whoever creates this customer (typically a sales rep recruiting a
+  // shop in the field) also set up their login right away, instead of
+  // leaving them with no way to sign in until they separately self-register
+  // on the storefront. Requires `phone` — the customer logs in with the
+  // same phone-based flow every other retailer uses. The customer can
+  // change it afterward via POST /auth/change-password.
+  @ApiPropertyOptional({ description: "Temporary password — requires phone. Omit to create a customer with no login yet." })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
 
   @ApiPropertyOptional({ type: [CustomerAddressDto] })
   @IsOptional()

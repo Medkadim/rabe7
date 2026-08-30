@@ -322,6 +322,23 @@ export class AuthService {
     ]);
   }
 
+  // Lets a signed-in user (most importantly: a customer given a temporary
+  // password by a sales rep — see CustomersService.create) set their own
+  // password. Requires the current one rather than just trusting the JWT,
+  // so a still-open session on a shared device can't be used to lock the
+  // real owner out.
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    const passwordValid = await argon2.verify(user.passwordHash, currentPassword);
+    if (!passwordValid) {
+      throw new UnauthorizedException("Current password is incorrect.");
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
   // Self-service "who am I" — deliberately not gated behind a permission
   // (there's nothing to authorize, you can always read your own profile).
   // The storefront uses this to show a customer their own approval status

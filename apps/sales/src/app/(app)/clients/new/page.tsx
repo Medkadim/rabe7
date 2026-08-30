@@ -17,7 +17,8 @@ const newClientSchema = z.object({
   name: z.string().min(1, "مطلوب"),
   legalName: z.string().optional(),
   taxId: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().min(1, "مطلوب لإنشاء حساب دخول للعميل"),
+  password: z.string().min(8, "8 خانات على الأقل"),
   line1: z.string().min(1, "مطلوب"),
   city: z.string().min(1, "مطلوب"),
   region: z.string().optional(),
@@ -28,6 +29,13 @@ interface CreatedCustomer {
   id: string;
 }
 
+// An easy-to-read 8-digit code the rep can hand the client on the spot —
+// they log in with it right away and can change it later from the app
+// (see the storefront's account page).
+function generateTempPassword(): string {
+  return String(Math.floor(10_000_000 + Math.random() * 90_000_000));
+}
+
 export default function NewClientPage() {
   const router = useRouter();
   const { accessToken, user } = useAuth();
@@ -35,12 +43,20 @@ export default function NewClientPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  // Shown after creation so the rep has a moment to read the credentials
+  // out to the client (or write them down) before moving on — this is the
+  // only place that password is ever visible, the server never echoes it
+  // back.
+  const [created, setCreated] = useState<{ id: string; phone: string; password: string } | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<NewClientForm>({ resolver: zodResolver(newClientSchema) });
+  } = useForm<NewClientForm>({
+    resolver: zodResolver(newClientSchema),
+    defaultValues: { password: generateTempPassword() },
+  });
 
   const create = useMutation({
     mutationFn: async (values: NewClientForm) => {
@@ -49,13 +65,14 @@ export default function NewClientPage() {
         const uploaded = await uploadImage(photo, accessToken);
         photoUrl = uploaded.url;
       }
-      return apiFetch<CreatedCustomer>("/customers", accessToken, {
+      const customer = await apiFetch<CreatedCustomer>("/customers", accessToken, {
         method: "POST",
         body: JSON.stringify({
           name: values.name,
           legalName: values.legalName || undefined,
           taxId: values.taxId || undefined,
-          phone: values.phone || undefined,
+          phone: values.phone,
+          password: values.password,
           photoUrl,
           assignedRepId: user?.userId,
           addresses: [
@@ -72,11 +89,41 @@ export default function NewClientPage() {
           ],
         }),
       });
+      return { customer, phone: values.phone, password: values.password };
     },
-    onSuccess: (customer) => {
-      router.push(`/orders/new?customerId=${customer.id}`);
+    onSuccess: ({ customer, phone, password }) => {
+      setCreated({ id: customer.id, phone, password });
     },
   });
+
+  if (created) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-xl font-semibold text-ink">تم إنشاء الحساب</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>معلومات الدخول — أعطها للعميل الآن</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <p className="text-muted">
+              يمكن للعميل تحميل التطبيق وتسجيل الدخول بهذه المعلومات، ثم تغيير كلمة المرور من حسابه لاحقًا.
+            </p>
+            <div className="flex items-center justify-between rounded-md border border-line p-3">
+              <span className="text-muted">الهاتف</span>
+              <span dir="ltr" className="font-mono text-ink">{created.phone}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-line p-3">
+              <span className="text-muted">كلمة المرور المؤقتة</span>
+              <span dir="ltr" className="font-mono text-ink">{created.password}</span>
+            </div>
+            <Button onClick={() => router.push(`/orders/new?customerId=${created.id}`)} className="w-full">
+              متابعة إلى إنشاء الطلب
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   function locate() {
     if (!navigator.geolocation) {
@@ -124,8 +171,18 @@ export default function NewClientPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="phone">الهاتف (اختياري)</Label>
+              <Label htmlFor="phone">الهاتف</Label>
               <Input id="phone" type="tel" dir="ltr" placeholder="0612345678" {...register("phone")} />
+              {errors.phone && <p className="text-xs text-critical">{errors.phone.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">كلمة المرور المؤقتة</Label>
+              <Input id="password" dir="ltr" className="font-mono" {...register("password")} />
+              <p className="text-xs text-muted">
+                أعطِ هذا الرمز للعميل حتى يتمكن من تسجيل الدخول — يمكنه تغييره لاحقًا من حسابه.
+              </p>
+              {errors.password && <p className="text-xs text-critical">{errors.password.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">

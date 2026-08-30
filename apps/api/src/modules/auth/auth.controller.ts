@@ -6,6 +6,7 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterCustomerDto } from "./dto/register-customer.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { ForgotPasswordDto, ResetPasswordDto } from "./dto/forgot-password.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { EnableTwoFactorDto } from "./dto/enable-two-factor.dto";
 import { Public } from "../../common/decorators/public.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -62,6 +63,14 @@ export class AuthController {
   @ApiOperation({ summary: "Reset password using a reset token" })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  @Post("change-password")
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Change your own password — e.g. replacing a temporary one set by a sales rep" })
+  async changePassword(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto): Promise<void> {
+    await this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword);
   }
 
   @Get("me")

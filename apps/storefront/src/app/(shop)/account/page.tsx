@@ -1,7 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -17,7 +22,21 @@ function statusColor(status: string) {
 }
 
 export default function AccountPage() {
-  const { customer, user, logout } = useAuth();
+  const { customer, user, logout, accessToken } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  const changePassword = useMutation({
+    mutationFn: () =>
+      apiFetch<void>("/auth/change-password", accessToken, {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,6 +100,50 @@ export default function AccountPage() {
               </p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>تغيير كلمة المرور</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              changePassword.mutate();
+            }}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="currentPassword">كلمة المرور الحالية</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={changePassword.isPending} className="w-fit">
+              {changePassword.isPending ? "جارٍ الحفظ…" : "حفظ كلمة المرور"}
+            </Button>
+            {changePassword.isSuccess && <p className="text-sm text-success">تم تغيير كلمة المرور.</p>}
+            {changePassword.isError && (
+              <p className="text-sm text-critical">
+                {changePassword.error instanceof ApiError ? changePassword.error.message : "حدث خطأ ما."}
+              </p>
+            )}
+          </form>
         </CardContent>
       </Card>
 
