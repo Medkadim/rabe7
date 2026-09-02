@@ -19,6 +19,7 @@ interface Product {
   basePrice: string;
   currentStock: number;
   category: { name: string } | null;
+  images: { url: string }[];
 }
 
 interface ProductListResponse {
@@ -110,15 +111,27 @@ export default function ProductsCatalogPage() {
 
       <div className="flex flex-col gap-2">
         {accumulated.map((product) => (
-          <Card key={product.id} className="flex items-center justify-between p-4">
-            <div>
-              <p className="font-medium text-ink">{product.name}</p>
-              <p className="text-xs text-muted">
-                {product.category?.name ?? "—"} · {product.unit}
-                {product.currentStock <= 0 ? " · غير متوفر" : ""}
-              </p>
+          <Card key={product.id} className="flex items-center justify-between gap-3 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              {product.images[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.images[0].url}
+                  alt={product.name}
+                  className="h-12 w-12 shrink-0 rounded-md object-cover"
+                />
+              ) : (
+                <div className="h-12 w-12 shrink-0 rounded-md bg-brand-soft" />
+              )}
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{product.name}</p>
+                <p className="text-xs text-muted">
+                  {product.category?.name ?? "—"} · {product.unit}
+                  {product.currentStock <= 0 ? " · غير متوفر" : ""}
+                </p>
+              </div>
             </div>
-            <p className="font-semibold text-ink">{formatPrice(product.basePrice)}</p>
+            <p className="shrink-0 font-semibold text-ink">{formatPrice(product.basePrice)}</p>
           </Card>
         ))}
       </div>

@@ -22,7 +22,12 @@ describe("WarehouseService", () => {
       ),
     };
     orders = { findOne: jest.fn() };
-    service = new WarehouseService(prisma as unknown as PrismaService, orders as unknown as OrdersService);
+    const notifications = { notifyNewReturn: jest.fn() };
+    service = new WarehouseService(
+      prisma as unknown as PrismaService,
+      orders as unknown as OrdersService,
+      notifications as never,
+    );
   });
 
   describe("adjustStock", () => {

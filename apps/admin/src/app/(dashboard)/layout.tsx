@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { usePushNotifications } from "@/lib/use-push-notifications";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { status, user, logout } = useAuth();
   const router = useRouter();
+  usePushNotifications();
 
   useEffect(() => {
     if (status === "unauthenticated") {

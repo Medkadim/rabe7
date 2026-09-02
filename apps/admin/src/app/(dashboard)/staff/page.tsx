@@ -21,6 +21,7 @@ interface StaffMember {
   email: string | null;
   phone: string | null;
   status: string;
+  deletedAt: string | null;
   roles: { role: { code: string; name: string } }[];
 }
 
@@ -195,6 +196,11 @@ export default function StaffPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
   });
 
+  const reactivate = useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/staff/${id}/reactivate`, accessToken, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
+  });
+
   const canManage = hasPermission("users.manage");
 
   return (
@@ -330,18 +336,29 @@ export default function StaffPage() {
                                 {targetsEditingId === member.id ? "Close" : "Set targets"}
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={deactivate.isPending}
-                              onClick={() => {
-                                if (window.confirm(`Deactivate ${member.firstName} ${member.lastName}? They won't be able to sign in anymore.`)) {
-                                  deactivate.mutate(member.id);
-                                }
-                              }}
-                            >
-                              Deactivate
-                            </Button>
+                            {member.deletedAt ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={reactivate.isPending}
+                                onClick={() => reactivate.mutate(member.id)}
+                              >
+                                Reactivate
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={deactivate.isPending}
+                                onClick={() => {
+                                  if (window.confirm(`Deactivate ${member.firstName} ${member.lastName}? They won't be able to sign in anymore.`)) {
+                                    deactivate.mutate(member.id);
+                                  }
+                                }}
+                              >
+                                Deactivate
+                              </Button>
+                            )}
                           </div>
                         </td>
                       )}
@@ -359,6 +376,11 @@ export default function StaffPage() {
       {deactivate.isError && (
         <p className="text-sm text-critical">
           {deactivate.error instanceof ApiError ? deactivate.error.message : "Could not deactivate the account."}
+        </p>
+      )}
+      {reactivate.isError && (
+        <p className="text-sm text-critical">
+          {reactivate.error instanceof ApiError ? reactivate.error.message : "Could not reactivate the account."}
         </p>
       )}
     </div>

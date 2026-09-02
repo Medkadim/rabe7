@@ -4,6 +4,7 @@ import { CustomersService } from "./customers.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { QueryCustomersDto } from "./dto/query-customers.dto";
+import { ResetCustomerPasswordDto } from "./dto/reset-customer-password.dto";
 import { RequirePermissions } from "../../common/decorators/permissions.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUser } from "../auth/types/authenticated-user.type";
@@ -49,6 +50,18 @@ export class CustomersController {
   @ApiOperation({ summary: "Update a customer" })
   update(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() dto: UpdateCustomerDto) {
     return this.customersService.update(user.tenantId, id, dto);
+  }
+
+  @Post(":id/reset-password")
+  @RequirePermissions(PERMISSIONS.CUSTOMERS_UPDATE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Set a new (temporary) password for a customer — e.g. one who forgot theirs" })
+  async resetPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: ResetCustomerPasswordDto,
+  ): Promise<void> {
+    await this.customersService.resetPassword(user.tenantId, id, dto.phone, dto.password);
   }
 
   @Delete(":id")

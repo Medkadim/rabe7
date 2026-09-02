@@ -34,6 +34,7 @@ interface Product {
   unit: string;
   basePrice: string;
   currentStock: number;
+  images: { url: string }[];
 }
 
 interface ProductListResponse {
@@ -237,12 +238,24 @@ export default function NewOrderPage() {
           <div className="flex flex-col gap-2">
             {products?.data.map((product) => (
               <div key={product.id} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{product.name}</p>
-                  <p className="text-xs text-muted">
-                    {formatPrice(product.basePrice)} / {product.unit}
-                    {product.currentStock <= 0 ? " · غير متوفر" : ""}
-                  </p>
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  {product.images[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.images[0].url}
+                      alt={product.name}
+                      className="h-10 w-10 shrink-0 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 shrink-0 rounded-md bg-brand-soft" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{product.name}</p>
+                    <p className="text-xs text-muted">
+                      {formatPrice(product.basePrice)} / {product.unit}
+                      {product.currentStock <= 0 ? " · غير متوفر" : ""}
+                    </p>
+                  </div>
                 </div>
                 <QuantityStepper
                   value={cart[product.id]?.quantity ?? 0}

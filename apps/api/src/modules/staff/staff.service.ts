@@ -66,16 +66,17 @@ export class StaffService {
 
   // Everyone with a real login and no customer link — staff, not a
   // customer's own account (customerId is only ever set for RETAILER
-  // logins created via self-registration).
+  // logins created via self-registration). Deliberately includes
+  // deactivated accounts too (not just deletedAt: null) — otherwise
+  // there'd be no way to find and reactivate one from this list.
   list(tenantId: string, roleCode?: SystemRoleCode) {
     return this.prisma.user.findMany({
       where: {
         tenantId,
-        deletedAt: null,
         customerId: null,
         ...(roleCode ? { roles: { some: { role: { code: roleCode } } } } : {}),
       },
-      select: STAFF_SELECT,
+      select: { ...STAFF_SELECT, deletedAt: true },
       orderBy: { firstName: "asc" },
     });
   }
@@ -86,5 +87,18 @@ export class StaffService {
       throw new BadRequestException("Staff account not found.");
     }
     await this.prisma.user.update({ where: { id }, data: { deletedAt: new Date(), status: "SUSPENDED" } });
+  }
+
+  // Reverses remove() — clears deletedAt and brings the account back to
+  // ACTIVE, rather than making a rep re-enter (and the admin have to
+  // reinvent) the same account from scratch.
+  async reactivate(tenantId: string, id: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId, customerId: null, deletedAt: { not: null } },
+    });
+    if (!user) {
+      throw new BadRequestException("Deactivated staff account not found.");
+    }
+    await this.prisma.user.update({ where: { id }, data: { deletedAt: null, status: "ACTIVE" } });
   }
 }

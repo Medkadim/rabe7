@@ -35,4 +35,12 @@ export class StaffController {
   async remove(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string): Promise<void> {
     await this.staffService.remove(user.tenantId, id);
   }
+
+  @Post(":id/reactivate")
+  @RequirePermissions(PERMISSIONS.USERS_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Reactivate a previously deactivated staff account" })
+  async reactivate(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string): Promise<void> {
+    await this.staffService.reactivate(user.tenantId, id);
+  }
 }

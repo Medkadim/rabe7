@@ -23,8 +23,10 @@ export class CustomersService {
     // customer form still passes a manually-chosen code.
     const code = dto.code ?? this.sequence.formatNumber("CUST", await this.sequence.next(tenantId, "customer"));
 
+    // deletedAt: null — a code freed up by archiving a customer (see
+    // remove()) must be reusable, not permanently burned.
     const existing = await this.prisma.customer.findFirst({
-      where: { tenantId, code },
+      where: { tenantId, code, deletedAt: null },
     });
     if (existing) {
       throw new ConflictException(`A customer with code "${code}" already exists.`);
@@ -44,12 +46,7 @@ export class CustomersService {
       if (!normalizedPhone) {
         throw new BadRequestException("Enter a valid Moroccan phone number (e.g. 0612345678).");
       }
-      const existingUser = await this.prisma.user.findFirst({
-        where: { tenantId, deletedAt: null, phone: normalizedPhone },
-      });
-      if (existingUser) {
-        throw new ConflictException("An account with this phone number already exists.");
-      }
+      await this.assertPhoneIsFree(tenantId, normalizedPhone);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -76,26 +73,85 @@ export class CustomersService {
       });
 
       if (dto.password && normalizedPhone) {
-        const retailerRole = await tx.role.findFirstOrThrow({
-          where: { tenantId, code: SystemRoleCode.RETAILER },
-        });
-        const passwordHash = await argon2.hash(dto.password);
-        const user = await tx.user.create({
-          data: {
-            tenantId,
-            customerId: customer.id,
-            phone: normalizedPhone,
-            passwordHash,
-            firstName: customer.name,
-            lastName: "",
-            status: "ACTIVE",
-          },
-        });
-        await tx.userRole.create({ data: { userId: user.id, roleId: retailerRole.id } });
+        await this.upsertCustomerLogin(tx, tenantId, customer, normalizedPhone, dto.password);
       }
 
       return customer;
     });
+  }
+
+  // Sets (or resets) the password a customer logs into the storefront
+  // with — used both by create() above (a brand-new login) and by staff
+  // resetting a forgotten one for an existing customer (see
+  // CustomersController#resetPassword). Creates the linked User account
+  // if this customer never had one yet, rather than requiring it to
+  // already exist.
+  async resetPassword(tenantId: string, id: string, phone: string, password: string): Promise<void> {
+    const customer = await this.findOne(tenantId, id);
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException("Enter a valid Moroccan phone number (e.g. 0612345678).");
+    }
+
+    const existingUser = await this.prisma.user.findFirst({
+      where: { tenantId, customerId: id, deletedAt: null },
+    });
+    // Only reject a phone collision with *someone else's* account —
+    // this customer keeping (or changing to) their own number is fine.
+    if (!existingUser || existingUser.phone !== normalizedPhone) {
+      await this.assertPhoneIsFree(tenantId, normalizedPhone);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.customer.update({ where: { id }, data: { phone: normalizedPhone } });
+      await this.upsertCustomerLogin(tx, tenantId, customer, normalizedPhone, password);
+    });
+  }
+
+  private async assertPhoneIsFree(tenantId: string, normalizedPhone: string): Promise<void> {
+    const existingUser = await this.prisma.user.findFirst({
+      where: { tenantId, deletedAt: null, phone: normalizedPhone },
+    });
+    if (existingUser) {
+      throw new ConflictException("An account with this phone number already exists.");
+    }
+  }
+
+  private async upsertCustomerLogin(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    customer: { id: string; name: string },
+    normalizedPhone: string,
+    password: string,
+  ): Promise<void> {
+    const passwordHash = await argon2.hash(password);
+    const existingUser = await tx.user.findFirst({
+      where: { tenantId, customerId: customer.id, deletedAt: null },
+    });
+
+    if (existingUser) {
+      await tx.user.update({
+        where: { id: existingUser.id },
+        data: { phone: normalizedPhone, passwordHash, status: "ACTIVE" },
+      });
+      return;
+    }
+
+    const retailerRole = await tx.role.findFirstOrThrow({
+      where: { tenantId, code: SystemRoleCode.RETAILER },
+    });
+    const user = await tx.user.create({
+      data: {
+        tenantId,
+        customerId: customer.id,
+        phone: normalizedPhone,
+        passwordHash,
+        firstName: customer.name,
+        lastName: "",
+        status: "ACTIVE",
+      },
+    });
+    await tx.userRole.create({ data: { userId: user.id, roleId: retailerRole.id } });
   }
 
   async findAll(tenantId: string, query: QueryCustomersDto): Promise<PaginatedResult<unknown>> {
@@ -151,7 +207,17 @@ export class CustomersService {
 
   async remove(tenantId: string, id: string): Promise<void> {
     await this.findOne(tenantId, id);
-    await this.prisma.customer.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.prisma.$transaction([
+      this.prisma.customer.update({ where: { id }, data: { deletedAt: new Date() } }),
+      // Otherwise this customer's phone number stays permanently claimed
+      // by a zombie login no one can sign into or see — a new customer
+      // created later with the same number would fail as "already
+      // registered" even though this one is gone.
+      this.prisma.user.updateMany({
+        where: { tenantId, customerId: id, deletedAt: null },
+        data: { deletedAt: new Date(), status: "SUSPENDED" },
+      }),
+    ]);
   }
 
   // Used by the Orders module to enforce (or warn about) the credit policy

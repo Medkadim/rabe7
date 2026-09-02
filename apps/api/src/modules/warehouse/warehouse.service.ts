@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { OrdersService } from "../orders/orders.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { ReceiveStockDto } from "./dto/receive-stock.dto";
 import { AdjustStockDto } from "./dto/adjust-stock.dto";
 import { CreateReturnDto } from "./dto/create-return.dto";
@@ -13,6 +14,7 @@ export class WarehouseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orders: OrdersService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async receiveStock(tenantId: string, userId: string, dto: ReceiveStockDto) {
@@ -145,7 +147,7 @@ export class WarehouseService {
   // ---- Returns ----------------------------------------------------------
 
   async createReturn(tenantId: string, userId: string, dto: CreateReturnDto) {
-    return this.prisma.return.create({
+    const createdReturn = await this.prisma.return.create({
       data: {
         tenantId,
         customerId: dto.customerId,
@@ -156,6 +158,12 @@ export class WarehouseService {
       },
       include: { items: { include: { product: true } }, customer: true },
     });
+
+    this.notifications
+      .notifyNewReturn(tenantId, createdReturn.id, createdReturn.customer.name)
+      .catch(() => undefined);
+
+    return createdReturn;
   }
 
   async listReturns(tenantId: string, query: PaginationQueryDto): Promise<PaginatedResult<unknown>> {

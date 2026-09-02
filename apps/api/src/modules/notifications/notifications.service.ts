@@ -128,4 +128,33 @@ export class NotificationsService implements OnModuleInit {
       data: { type: "promotion", promotionId },
     });
   }
+
+  // Every registered device belonging to a staff login (customerId: null
+  // — the flip side of broadcastToCustomers above) in this tenant. Not
+  // scoped to a specific permission (e.g. returns.receive) — this is a
+  // small distributor's own staff, and "notify the admin" is simplest as
+  // "notify everyone who works here."
+  private async broadcastToStaff(tenantId: string, message: PushMessage): Promise<void> {
+    const devices = await this.prisma.deviceToken.findMany({
+      where: { tenantId, user: { customerId: null } },
+      select: { token: true },
+    });
+    if (devices.length === 0) return;
+
+    const { invalidTokens } = await this.sendPush(
+      devices.map((d) => d.token),
+      message,
+    );
+    if (invalidTokens.length > 0) {
+      await this.prisma.deviceToken.deleteMany({ where: { token: { in: invalidTokens } } });
+    }
+  }
+
+  async notifyNewReturn(tenantId: string, returnId: string, customerName: string): Promise<void> {
+    await this.broadcastToStaff(tenantId, {
+      title: "إرجاع جديد",
+      body: `تم الإبلاغ عن إرجاع من ${customerName}`,
+      data: { type: "return", returnId },
+    });
+  }
 }

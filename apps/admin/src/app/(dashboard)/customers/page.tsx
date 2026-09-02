@@ -65,6 +65,10 @@ export default function CustomersPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Customer | null>(null);
+  const [resetPhone, setResetPhone] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetDone, setResetDone] = useState(false);
 
   const { data, isLoading } = useApiQuery<CustomerListResponse>(["customers", "list"], "/customers?pageSize=50");
 
@@ -122,6 +126,25 @@ export default function CustomersPage() {
   const deleteCustomer = useMutation({
     mutationFn: (id: string) => apiFetch<void>(`/customers/${id}`, accessToken, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+  });
+
+  function startResetPassword(customer: Customer) {
+    setResetTarget(customer);
+    setResetPhone(customer.phone ?? "");
+    setResetPassword(generateTempPassword());
+    setResetDone(false);
+  }
+
+  const resetCustomerPassword = useMutation({
+    mutationFn: () =>
+      apiFetch<void>(`/customers/${resetTarget?.id}/reset-password`, accessToken, {
+        method: "POST",
+        body: JSON.stringify({ phone: resetPhone, password: resetPassword }),
+      }),
+    onSuccess: () => {
+      setResetDone(true);
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
   });
 
   const canCreate = hasPermission("customers.create");
@@ -198,6 +221,70 @@ export default function CustomersPage() {
                 )}
               </div>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {resetTarget && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Reset password — {resetTarget.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {resetDone ? (
+              <>
+                <p className="text-sm text-muted">
+                  Give these to the customer — they can change it later from their own account.
+                </p>
+                <div className="flex items-center justify-between rounded-md border border-line p-3 text-sm">
+                  <span className="text-muted">Phone</span>
+                  <span className="font-mono text-ink">{resetPhone}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-line p-3 text-sm">
+                  <span className="text-muted">Temporary password</span>
+                  <span className="font-mono text-ink">{resetPassword}</span>
+                </div>
+                <Button variant="outline" className="w-fit" onClick={() => setResetTarget(null)}>
+                  Done
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="resetPhone">Phone</Label>
+                    <Input id="resetPhone" value={resetPhone} onChange={(e) => setResetPhone(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="resetPassword">New temporary password</Label>
+                    <Input
+                      id="resetPassword"
+                      className="font-mono"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    disabled={resetCustomerPassword.isPending}
+                    onClick={() => resetCustomerPassword.mutate()}
+                  >
+                    {resetCustomerPassword.isPending ? "Saving…" : "Set password"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setResetTarget(null)}>
+                    Cancel
+                  </Button>
+                  {resetCustomerPassword.isError && (
+                    <p className="text-sm text-critical">
+                      {resetCustomerPassword.error instanceof ApiError
+                        ? resetCustomerPassword.error.message
+                        : "Something went wrong."}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -285,6 +372,11 @@ export default function CustomersPage() {
                         {canUpdate && (
                           <Button variant="outline" size="sm" onClick={() => startEdit(customer)}>
                             Edit
+                          </Button>
+                        )}
+                        {canUpdate && (
+                          <Button variant="outline" size="sm" onClick={() => startResetPassword(customer)}>
+                            Reset password
                           </Button>
                         )}
                         {canDelete && (

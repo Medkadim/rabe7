@@ -34,6 +34,8 @@ describe("CustomersService", () => {
       user: {
         findFirst: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
       },
       role: {
         findFirstOrThrow: jest.fn(),
@@ -128,6 +130,60 @@ describe("CustomersService", () => {
         }),
       );
       expect(prisma.userRole.create).toHaveBeenCalledWith({ data: { userId: "u1", roleId: "role_retailer" } });
+    });
+  });
+
+  describe("remove", () => {
+    it("deactivates any login linked to the customer, freeing their phone number for reuse", async () => {
+      prisma.customer.findFirst.mockResolvedValue({ id: "c1" });
+
+      await service.remove(tenantId, "c1");
+
+      expect(prisma.customer.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "c1" }, data: expect.objectContaining({ deletedAt: expect.any(Date) }) }),
+      );
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { tenantId, customerId: "c1", deletedAt: null },
+        data: { deletedAt: expect.any(Date), status: "SUSPENDED" },
+      });
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("creates a login for a customer that never had one", async () => {
+      prisma.customer.findFirst.mockResolvedValue({ id: "c1", name: "Kadim Store" });
+      prisma.user.findFirst.mockResolvedValueOnce(null); // existing login for this customer?
+      prisma.user.findFirst.mockResolvedValueOnce(null); // phone taken by someone else?
+      prisma.role.findFirstOrThrow.mockResolvedValue({ id: "role_retailer" });
+      prisma.user.create.mockResolvedValue({ id: "u1" });
+
+      await service.resetPassword(tenantId, "c1", "0612345678", "correct-horse-battery");
+
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ customerId: "c1", phone: "+212612345678" }) }),
+      );
+    });
+
+    it("updates the existing login's password instead of creating a second one", async () => {
+      prisma.customer.findFirst.mockResolvedValue({ id: "c1", name: "Kadim Store" });
+      prisma.user.findFirst.mockResolvedValue({ id: "u1", phone: "+212612345678" });
+
+      await service.resetPassword(tenantId, "c1", "0612345678", "correct-horse-battery");
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "u1" }, data: expect.objectContaining({ phone: "+212612345678" }) }),
+      );
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a phone already used by a different customer's login", async () => {
+      prisma.customer.findFirst.mockResolvedValue({ id: "c1", name: "Kadim Store" });
+      prisma.user.findFirst.mockResolvedValueOnce(null); // no existing login for c1
+      prisma.user.findFirst.mockResolvedValueOnce({ id: "u2" }); // but the phone belongs to someone else
+
+      await expect(
+        service.resetPassword(tenantId, "c1", "0612345678", "correct-horse-battery"),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 
