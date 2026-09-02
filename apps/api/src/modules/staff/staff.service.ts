@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import * as argon2 from "argon2";
-import { SystemRoleCode } from "@prisma/client";
+import { Prisma, SystemRoleCode } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { normalizePhone } from "../auth/utils/phone.util";
 import { CreateStaffDto, STAFF_ROLE_CODES } from "./dto/create-staff.dto";
@@ -100,5 +100,34 @@ export class StaffService {
       throw new BadRequestException("Deactivated staff account not found.");
     }
     await this.prisma.user.update({ where: { id }, data: { deletedAt: null, status: "ACTIVE" } });
+  }
+
+  // Permanently removes the account, not just hides it — only possible
+  // for one that's already deactivated (the controller enforces that
+  // ordering) and has never actually done anything: orders, payments,
+  // stock movements, and returns all keep a required, non-nullable
+  // "who did this" reference to a User (onDelete: Restrict in the
+  // schema), so the database itself refuses the delete for anyone with
+  // real history. That's deliberate — those records must keep saying who
+  // handled them. remove()/reactivate() above are the right tool for an
+  // employee who's simply gone but has a track record.
+  async hardDelete(tenantId: string, id: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId, customerId: null, deletedAt: { not: null } },
+    });
+    if (!user) {
+      throw new BadRequestException("A staff account must be deactivated before it can be permanently deleted.");
+    }
+
+    try {
+      await this.prisma.user.delete({ where: { id } });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+        throw new ConflictException(
+          "This account has activity on record (orders, payments, stock movements, or returns) — historical records need to keep who handled them, so it can't be permanently deleted. It stays deactivated instead.",
+        );
+      }
+      throw err;
+    }
   }
 }

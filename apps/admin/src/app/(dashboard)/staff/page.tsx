@@ -201,6 +201,11 @@ export default function StaffPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
   });
 
+  const hardDelete = useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/staff/${id}/permanent`, accessToken, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff"] }),
+  });
+
   const canManage = hasPermission("users.manage");
 
   return (
@@ -337,14 +342,32 @@ export default function StaffPage() {
                               </Button>
                             )}
                             {member.deletedAt ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={reactivate.isPending}
-                                onClick={() => reactivate.mutate(member.id)}
-                              >
-                                Reactivate
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={reactivate.isPending}
+                                  onClick={() => reactivate.mutate(member.id)}
+                                >
+                                  Reactivate
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={hardDelete.isPending}
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `Permanently delete ${member.firstName} ${member.lastName}? This cannot be undone. If they have any orders, payments, stock movements, or returns on record, this will be refused instead.`,
+                                      )
+                                    ) {
+                                      hardDelete.mutate(member.id);
+                                    }
+                                  }}
+                                >
+                                  Delete permanently
+                                </Button>
+                              </>
                             ) : (
                               <Button
                                 variant="ghost"
@@ -381,6 +404,11 @@ export default function StaffPage() {
       {reactivate.isError && (
         <p className="text-sm text-critical">
           {reactivate.error instanceof ApiError ? reactivate.error.message : "Could not reactivate the account."}
+        </p>
+      )}
+      {hardDelete.isError && (
+        <p className="text-sm text-critical">
+          {hardDelete.error instanceof ApiError ? hardDelete.error.message : "Could not permanently delete the account."}
         </p>
       )}
     </div>

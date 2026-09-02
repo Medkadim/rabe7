@@ -43,4 +43,12 @@ export class StaffController {
   async reactivate(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string): Promise<void> {
     await this.staffService.reactivate(user.tenantId, id);
   }
+
+  @Delete(":id/permanent")
+  @RequirePermissions(PERMISSIONS.USERS_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Permanently delete a deactivated staff account with no activity on record" })
+  async hardDelete(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string): Promise<void> {
+    await this.staffService.hardDelete(user.tenantId, id);
+  }
 }
