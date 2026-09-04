@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+:root {
+  /* Waslak brand — teal is the brand color (headers, nav, the logo mark's
+     zigzag line); amber is the one action color, used only for buttons/
+     links so it never competes with itself. Success/warning/critical are
+     deliberately separate hues from the amber accent — a "Confirmed" badge
+     must never look like a button. */
+  --paper: oklch(96% 0.004 175);
+  --paper-raised: oklch(100% 0 0);
+  --ink: oklch(23% 0.03 175);
+  --muted: oklch(51% 0.015 175);
+  --line: oklch(90% 0.0055 175);
+  --brand: oklch(42% 0.085 175);
+  --brand-soft: oklch(94% 0.025 175);
+  --brand-ink: oklch(35% 0.08 175);
+  --accent: oklch(63% 0.15 34);
+  --accent-soft: oklch(95% 0.04 34);
+  --accent-ink: oklch(52% 0.14 34);
+  --success: oklch(45% 0.1 145);
+  --success-soft: oklch(94% 0.03 145);
+  --critical: oklch(53% 0.16 25);
+  --critical-soft: oklch(94% 0.03 25);
+  --warning: oklch(60% 0.13 60);
+  --warning-soft: oklch(95% 0.04 60);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: oklch(18% 0.012 175);
+    --paper-raised: oklch(24% 0.014 175);
+    --ink: oklch(93% 0.006 175);
+    --muted: oklch(68% 0.012 175);
+    --line: oklch(30% 0.012 175);
+    --brand: oklch(70% 0.06 175);
+    --brand-soft: oklch(26% 0.03 175);
+    --brand-ink: oklch(85% 0.04 175);
+    --accent: oklch(70% 0.12 34);
+    --accent-soft: oklch(28% 0.06 34);
+    --accent-ink: oklch(82% 0.09 34);
+    --success: oklch(68% 0.1 145);
+    --success-soft: oklch(24% 0.04 145);
+    --critical: oklch(72% 0.12 25);
+    --critical-soft: oklch(26% 0.05 25);
+    --warning: oklch(74% 0.1 60);
+    --warning-soft: oklch(26% 0.05 60);
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+}

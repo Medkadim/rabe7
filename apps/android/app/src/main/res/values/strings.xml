@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Waslak</string>
+    <!-- Update this if the server's address ever changes, then rebuild. -->
+    <string name="base_url">https://waslak.ma</string>
+</resources>

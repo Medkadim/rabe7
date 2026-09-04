@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+
+// This runs on the Next.js server, inside its own Docker container — not in
+// the user's browser. NEXT_PUBLIC_API_URL is baked in for the browser (which
+// reaches the API through the published localhost:4000 port); the server
+// needs INTERNAL_API_URL instead, Docker's service-name address for the api
+// container, since "localhost" from in here means this container, not api's.
+const API_URL = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const REFRESH_COOKIE = "rabe7_storefront_refresh";
+
+// Runs on the server so the refresh token never touches browser JavaScript
+// (httpOnly cookie) — only the short-lived access token is handed to the
+// client, where it's kept in memory and lost on tab close. A stolen access
+// token expires in minutes; a stolen refresh token would otherwise be a
+// long-lived skeleton key.
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const backendResponse = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // audience is set here, server-side, not read from the request body —
+    // a browser posting to this route can't claim to be a different app to
+    // get past the API's per-app role check.
+    body: JSON.stringify({ ...body, audience: "storefront" }),
+  });
+
+  const data = await backendResponse.json();
+  if (!backendResponse.ok) {
+    return NextResponse.json(data, { status: backendResponse.status });
+  }
+
+  const response = NextResponse.json({
+    accessToken: data.accessToken,
+    expiresIn: data.expiresIn,
+    user: data.user,
+  });
+
+  response.cookies.set(REFRESH_COOKIE, data.refreshToken, {
+    httpOnly: true,
+    secure: process.env.COOKIE_SECURE === "true",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  return response;
+}

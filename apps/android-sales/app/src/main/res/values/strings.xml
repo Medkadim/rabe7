@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Waslak — المندوب</string>
+    <!-- Same server as the customer app (apps/android), different subdomain —
+         the sales app is published at commercial.waslak.ma. Update this if
+         the server's address ever changes, then rebuild. -->
+    <string name="base_url">https://commercial.waslak.ma</string>
+</resources>

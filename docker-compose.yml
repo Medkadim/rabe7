@@ -1,0 +1,234 @@
+name: rabe7
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # Same nginx-proxy/acme-companion pairing as the app containers (see
+      # their comments) — gives uploaded images (product photos, delivery
+      # proof-of-delivery, customer shop photos) a real HTTPS address
+      # instead of the bare IP, which browsers block as mixed content on
+      # an https:// page.
+      VIRTUAL_HOST: ${STORAGE_DOMAIN}
+      VIRTUAL_PORT: 9000
+      LETSENCRYPT_HOST: ${STORAGE_DOMAIN}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      # Picked up by nginx-proxy/acme-companion below (see their comment) —
+      # every app needing a public HTTPS hostname declares it the same way.
+      VIRTUAL_HOST: ${API_DOMAIN}
+      VIRTUAL_PORT: 4000
+      LETSENCRYPT_HOST: ${API_DOMAIN}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${NEXT_PUBLIC_FIREBASE_VAPID_KEY}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the admin server calls
+      # the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${ADMIN_DOMAIN}
+      VIRTUAL_PORT: 3000
+      LETSENCRYPT_HOST: ${ADMIN_DOMAIN}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  storefront:
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${NEXT_PUBLIC_FIREBASE_VAPID_KEY}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the storefront server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${STOREFRONT_DOMAIN}
+      VIRTUAL_PORT: 3001
+      LETSENCRYPT_HOST: ${STOREFRONT_DOMAIN}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+  driver:
+    build:
+      context: .
+      dockerfile: apps/driver/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the driver app's server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${DRIVER_DOMAIN}
+      VIRTUAL_PORT: 3002
+      LETSENCRYPT_HOST: ${DRIVER_DOMAIN}
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+
+  sales:
+    build:
+      context: .
+      dockerfile: apps/sales/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Docker's internal network, not the .env file: the sales app's server
+      # calls the api container by its service name, never through localhost.
+      INTERNAL_API_URL: http://api:4000/api/v1
+      VIRTUAL_HOST: ${SALES_DOMAIN}
+      VIRTUAL_PORT: 3003
+      LETSENCRYPT_HOST: ${SALES_DOMAIN}
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+
+  # Watches the other containers' VIRTUAL_HOST labels above and generates
+  # nginx server blocks for them automatically — no hand-written nginx.conf
+  # to keep in sync every time a subdomain is added or changed.
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:latest
+    # acme-companion below finds its nginx-proxy partner by container name
+    # (or falls back to error) — Compose's auto-generated name
+    # ("rabe7-nginx-proxy-1") isn't recognized, so this is pinned to the
+    # plain name every setup guide for this pair assumes.
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    depends_on:
+      - api
+      - admin
+      - storefront
+      - driver
+      - sales
+
+  # Watches the same containers and automatically requests/renews a Let's
+  # Encrypt certificate for each LETSENCRYPT_HOST — first issuance happens
+  # within a minute or two of the domain's DNS pointing here; nothing to
+  # run by hand, and it keeps renewing on its own every ~60 days.
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    restart: unless-stopped
+    environment:
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
+    # Sharing nginx-proxy's own volumes (rather than mounting matching
+    # named volumes separately) is what lets acme-companion auto-detect
+    # it as its partner — this is the official pairing pattern.
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:
+  certs:
+  vhost:
+  html:
+  acme:
