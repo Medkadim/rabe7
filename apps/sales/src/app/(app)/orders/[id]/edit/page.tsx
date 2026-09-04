@@ -44,6 +44,7 @@ interface Product {
 
 interface ProductListResponse {
   data: Product[];
+  meta: { total: number };
 }
 
 interface CartLine {
@@ -88,15 +89,28 @@ export default function EditOrderPage() {
 
   const [productSearch, setProductSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [productPage, setProductPage] = useState(1);
   const { data: categories } = useApiQuery<Category[]>(["products", "categories"], "/products/categories");
 
-  const productParams = new URLSearchParams({ pageSize: "30" });
+  useEffect(() => {
+    setProductPage(1);
+  }, [productSearch, categoryId]);
+
+  const productParams = new URLSearchParams({ pageSize: "30", page: String(productPage) });
   if (productSearch) productParams.set("search", productSearch);
   if (categoryId) productParams.set("categoryId", categoryId);
   const { data: products, isLoading: loadingProducts } = useApiQuery<ProductListResponse>(
-    ["products", "picker", productSearch, categoryId],
+    ["products", "picker", productSearch, categoryId, productPage],
     `/products?${productParams.toString()}`,
   );
+
+  const [accumulatedProducts, setAccumulatedProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    if (!products) return;
+    setAccumulatedProducts((current) => (productPage === 1 ? products.data : [...current, ...products.data]));
+  }, [products, productPage]);
+
+  const hasMoreProducts = accumulatedProducts.length < (products?.meta.total ?? 0);
 
   function setQuantity(product: Product, quantity: number) {
     setCart((current) => {
@@ -179,9 +193,9 @@ export default function EditOrderPage() {
               ))}
             </div>
           )}
-          {loadingProducts && <p className="text-sm text-muted">جارٍ التحميل…</p>}
+          {loadingProducts && productPage === 1 && <p className="text-sm text-muted">جارٍ التحميل…</p>}
           <div className="flex flex-col gap-2">
-            {products?.data.map((product) => (
+            {accumulatedProducts.map((product) => (
               <div key={product.id} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   {product.images[0] ? (
@@ -210,6 +224,16 @@ export default function EditOrderPage() {
               </div>
             ))}
           </div>
+          {hasMoreProducts && (
+            <Button
+              variant="outline"
+              onClick={() => setProductPage((p) => p + 1)}
+              disabled={loadingProducts}
+              className="mx-auto"
+            >
+              {loadingProducts ? "جارٍ التحميل…" : "عرض المزيد"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
